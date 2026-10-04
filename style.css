@@ -442,3 +442,32 @@ img { max-width: 100%; }
   border-radius: 0; color: inherit; padding: 0 0.2rem;
 }
 .papier .courses-ajout .bouton { font-family: var(--texte); }
+
+/* ---------- Onglet Placard ---------- */
+.placard-ajout { margin: 0.25rem 0 0.5rem; }
+.placard-ajout .rec-recherche { width: 100%; }
+.placard-ajout .suggestions { margin: 0.25rem 0 0; }
+.placard-aucun { margin: 0.6rem 0.1rem 0; font-size: 0.9rem; }
+.placard-aide { margin: -0.15rem 0 0.2rem; color: var(--encre-douce); font-size: 0.85rem; }
+.placard-liste { list-style: none; margin: 0; padding: 0; }
+.placard-liste li { border-bottom: 1px solid var(--trait); }
+.placard-item {
+  width: 100%; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.75rem;
+  background: none; border: 0; padding: 0.6rem 0; min-height: 48px; text-align: left; cursor: pointer; color: var(--encre);
+}
+.placard-on-en-a { color: var(--encre-douce); font-size: 0.9rem; }
+.placard-editeur { margin-top: 0.5rem; }
+.placard-editeur .editeur-nom { font-family: var(--titre); font-weight: 400; font-size: 1.3rem; }
+.placard-zones { grid-template-columns: repeat(3, 1fr); margin-bottom: 0; }
+.placard-zones button { padding: 0.7rem 0.25rem; font-size: 0.95rem; }
+.placard-zones button[aria-checked="true"] { background: var(--faience); color: var(--carte); }
+.placard-case { display: flex; align-items: flex-start; gap: 0.55rem; line-height: 1.35; }
+.placard-case input { width: 1.2rem; height: 1.2rem; margin: 0.1rem 0 0; accent-color: var(--faience); flex: none; }
+.placard-qte { display: grid; gap: 0.35rem; font-weight: 700; font-size: 0.95rem; }
+.placard-qte .discret { font-weight: 400; }
+.placard-qte small { font-size: 0.82rem; line-height: 1.35; }
+.placard-qte input {
+  font-size: 1.05rem; padding: 0.65rem 0.75rem; border: 1.5px solid var(--trait); border-radius: 10px;
+  background: var(--carte); width: 100%; max-width: 9rem;
+}
+.placard-retirer { justify-self: center; }
