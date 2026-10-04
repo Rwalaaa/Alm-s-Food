@@ -356,3 +356,10 @@ img { max-width: 100%; }
 .formulaire label .discret { font-weight: 400; }
 .form-etapes { list-style: none; padding: 0; counter-reset: etape; }
 .form-etapes li::before { counter-increment: etape; content: "Étape " counter(etape); display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.3rem; }
+
+/* Fiche : modifier / supprimer */
+.fiche-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 2rem 0 0.5rem; }
+.bouton-danger {
+  appearance: none; border: 1.5px solid var(--erreur); border-radius: 10px; background: transparent;
+  color: var(--erreur); font-weight: 700; min-height: 48px; cursor: pointer;
+}

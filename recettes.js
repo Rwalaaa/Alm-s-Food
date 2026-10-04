@@ -154,10 +154,17 @@
         '<ol class="fiche-etapes">' + (r.etapes || []).map(function (e) {
           return '<li>' + h(e.texte) + (e.minuteur_s ? ' <span class="minuteur">' + dureeTexte(Math.round(e.minuteur_s / 60)) + '</span>' : '') + '</li>';
         }).join('') + '</ol>' +
-      '</article>';
+      '</article>' +
+      '<div class="fiche-actions">' +
+        '<button type="button" class="bouton secondaire" id="fiche-modifier">Modifier</button>' +
+        '<button type="button" class="bouton-danger" id="fiche-supprimer">Supprimer</button>' +
+      '</div>' +
+      '<p class="erreur" id="fiche-erreur" role="alert" hidden></p>';
     c.querySelector('.retour').addEventListener('click', function () {
       if (history.state && history.state.recette) history.back(); else fermerFiche(c);
     });
+    c.querySelector('#fiche-modifier').addEventListener('click', function () { ouvrirFormulaire(c, r); });
+    c.querySelector('#fiche-supprimer').addEventListener('click', function () { supprimer(c, r); });
     window.scrollTo(0, 0);
   }
 
@@ -213,18 +220,43 @@
     return unite === 'piece' ? s : s + ' ' + unite;
   }
 
-  function ouvrirFormulaire(c) {
-    etat.form = nouveauFormulaire();
+  // Formulaire prérempli à partir d'une recette existante (modification)
+  function formulaireDepuis(r) {
+    var F = nouveauFormulaire();
+    F.id = r.id;
+    F.titre = r.titre; F.description = r.description || ''; F.pays = r.pays || '';
+    F.prep = String(r.temps_prep_min); F.cuisson = String(r.temps_cuisson_min); F.portions = r.portions;
+    F.froid = !!r.se_mange_froid;
+    F.vegeManuel = !!r.vegetarien;
+    F.tags = (r.categories || []).filter(function (t) { return ETIQUETTES_MANUELLES.indexOf(t) !== -1; });
+    F.ingredients = (r.recette_ingredients || []).filter(function (ri) { return ri.ingredients; }).map(function (ri) {
+      return { nom: ri.ingredients.nom, quantite: Number(ri.quantite), optionnel: !!ri.optionnel, nouveau: null, libelle: ri.libelle_quantite };
+    });
+    F.etapes = (r.etapes || []).map(function (e) {
+      return { texte: e.texte, minutes: e.minuteur_s ? String(Math.round(e.minuteur_s / 60)) : '' };
+    });
+    if (!F.etapes.length) F.etapes = [{ texte: '', minutes: '' }];
+    return F;
+  }
+
+  function ouvrirFormulaire(c, recette) {
+    etat.form = recette ? formulaireDepuis(recette) : nouveauFormulaire();
     try { history.pushState({ formulaire: true }, ''); } catch (err) { /* sans historique */ }
     c.innerHTML = '<p class="chargement">Chargement des ingrédients…</p>';
-    chargerCatalogue(etat.ctx.sb).then(function () { if (c.isConnected) rendreFormulaire(c); }, function (err) {
+    chargerCatalogue(etat.ctx.sb).then(function () {
+      // Végé redevient automatique si la valeur enregistrée correspond au calcul
+      var F = etat.form;
+      if (F && F.id && F.vegeManuel === vegeAuto(F)) F.vegeManuel = null;
+      if (c.isConnected) rendreFormulaire(c);
+    }, function (err) {
       c.innerHTML = '<p class="erreur">' + h(App.traduireErreur(err)) + '</p>';
     });
   }
 
   function fermerFormulaire(c) {
+    var id = etat.form && etat.form.id;
     etat.form = null;
-    rendreListe(c);
+    if (id) { etat.ouverte = id; rendreFiche(c); } else rendreListe(c);
   }
 
   function rendreFormulaire(c) {
@@ -233,7 +265,7 @@
     var pays = Array.from(new Set(etat.recettes.map(function (r) { return r.pays; }).filter(Boolean))).sort();
     c.innerHTML =
       '<button type="button" class="retour" id="form-annuler">Annuler</button>' +
-      '<h2 class="fiche-titre">Nouvelle recette</h2>' +
+      '<h2 class="fiche-titre">' + (F.id ? 'Modifier la recette' : 'Nouvelle recette') + '</h2>' +
       '<div class="formulaire form-recette">' +
         '<label>Nom du plat<input data-champ="titre" maxlength="80" value="' + h(F.titre) + '"></label>' +
         '<label><span>Description <span class="discret">(facultatif)</span></span><input data-champ="description" maxlength="160" value="' + h(F.description) + '"></label>' +
@@ -255,7 +287,7 @@
         '<h3>Ingrédients</h3>' +
         '<ul class="form-ingr">' + F.ingredients.map(function (ing, k) {
           var u = infoIngredient(ing).unite_base;
-          return '<li><span><strong>' + h(libelle(ing.quantite, u)) + '</strong> ' + h(ing.nom) +
+          return '<li><span><strong>' + h(ing.libelle || libelle(ing.quantite, u)) + '</strong> ' + h(ing.nom) +
             (ing.optionnel ? ' <span class="discret">(facultatif)</span>' : '') +
             (ing.nouveau ? ' <span class="badge">nouveau</span>' : '') + '</span>' +
             '<button type="button" class="form-suppr" data-suppr-ingr="' + k + '" aria-label="Retirer ' + h(ing.nom) + '">Retirer</button></li>';
@@ -272,7 +304,7 @@
         '<button type="button" class="ajouter" id="etape-ajouter">Ajouter une étape</button>' +
 
         '<p class="erreur" role="alert" id="form-erreur" hidden></p>' +
-        '<button type="button" class="bouton" id="form-enregistrer">Enregistrer la recette</button>' +
+        '<button type="button" class="bouton" id="form-enregistrer">' + (F.id ? 'Enregistrer les modifications' : 'Enregistrer la recette') + '</button>' +
       '</div>';
     brancherFormulaire(c);
   }
@@ -419,7 +451,7 @@
     var prep = Number(F.prep) || 0, cuisson = Number(F.cuisson) || 0, portions = Math.round(Number(F.portions));
     if (!titre) return erreurFormulaire(c, 'Donne un nom au plat.');
     if (F.editeur) return erreurFormulaire(c, 'Termine ou annule l\'ingrédient en cours avant d\'enregistrer.');
-    if (etat.recettes.some(function (r) { return App.simplifier(r.titre) === App.simplifier(titre); }))
+    if (etat.recettes.some(function (r) { return r.id !== F.id && App.simplifier(r.titre) === App.simplifier(titre); }))
       return erreurFormulaire(c, 'Une recette porte déjà ce nom.');
     if (!(portions >= 1 && portions <= 20)) return erreurFormulaire(c, 'Le nombre de portions doit être entre 1 et 20.');
     if (prep < 0 || cuisson < 0) return erreurFormulaire(c, 'Les temps ne peuvent pas être négatifs.');
@@ -443,7 +475,7 @@
       etapes: etapes.map(function (e) { var m = Number(e.minutes); return { texte: e.texte.trim(), minuteur_s: m > 0 ? Math.round(m * 60) : null }; }),
       // ingrédient du catalogue -> son id ; nouvel ingrédient -> créé par la base dans la même opération
       ingredients: F.ingredients.map(function (i) {
-        var d = { quantite: i.quantite, libelle: libelle(i.quantite, infoIngredient(i).unite_base), optionnel: !!i.optionnel };
+        var d = { quantite: i.quantite, libelle: i.libelle || libelle(i.quantite, infoIngredient(i).unite_base), optionnel: !!i.optionnel };
         if (i.nouveau) d.nouveau = { nom: i.nom, rayon: i.nouveau.rayon, unite_base: i.nouveau.unite_base, poids_piece_g: i.nouveau.poids_piece_g || '' };
         else d.ingredient_id = infoIngredient(i).id;
         return d;
@@ -451,7 +483,8 @@
     };
     var bouton = c.querySelector('#form-enregistrer');
     etat.occupe = true; bouton.disabled = true;
-    var r = await etat.ctx.sb.rpc('ajouter_recette', { p: donnees });
+    var r = F.id ? await etat.ctx.sb.rpc('modifier_recette', { p_id: F.id, p: donnees })
+                 : await etat.ctx.sb.rpc('ajouter_recette', { p: donnees });
     etat.occupe = false; bouton.disabled = false;
     if (r.error) {
       var m = r.error.message || '';
@@ -464,6 +497,25 @@
     etat.ouverte = r.data;
     try { history.replaceState({ recette: etat.ouverte }, ''); } catch (err) { /* */ }
     rendreFiche(c);
+  }
+
+  // ---------- Suppression ----------
+  async function supprimer(c, r) {
+    if (etat.occupe) return;
+    var err = c.querySelector('#fiche-erreur');
+    var u = await etat.ctx.sb.from('planning').select('id').eq('recette_id', r.id);
+    var n = (u.data || []).length;
+    var msg = 'Supprimer « ' + r.titre + ' » ?' + (n
+      ? '\n\nCe plat apparaît ' + n + ' fois dans le planning (historique compris) : ces repas seront retirés aussi.' : '');
+    if (!window.confirm(msg)) return;
+    etat.occupe = true;
+    var d = await etat.ctx.sb.from('recettes').delete().eq('id', r.id);
+    etat.occupe = false;
+    if (d.error) { err.textContent = App.traduireErreur(d.error); err.hidden = false; return; }
+    etat.recettes = etat.recettes.filter(function (x) { return x.id !== r.id; });
+    etat.ouverte = null;
+    try { if (history.state && history.state.recette) history.replaceState(null, ''); } catch (e) { /* */ }
+    rendreListe(c);
   }
 
   // Bouton retour du téléphone : ferme la fiche au lieu de quitter l'appli
