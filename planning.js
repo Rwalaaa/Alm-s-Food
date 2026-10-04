@@ -25,7 +25,7 @@
     return 'Du ' + lundi.getDate() + ' ' + MOIS[lundi.getMonth()] + ' au ' + dim.getDate() + ' ' + MOIS[dim.getMonth()];
   }
 
-  var etat = { lundi: null, repas: [], recettes: [], parId: {}, choix: null, texte: '', erreur: '', occupe: false };
+  var etat = { lundi: null, repas: [], recettes: [], parId: {}, choix: null, texte: '', erreur: '', occupe: false, froid: false, recents: {} };
 
   function lundiCourant() { return lundiDe(App.aujourdhui()); }
   function semainePassee() { return etat.lundi < lundiCourant(); }
@@ -34,7 +34,7 @@
   async function chargerSemaine(sb) {
     var r = await sb.from('planning')
       .select('id, jour, moment, recette_id, portions, reste_de, froid')
-      .gte('jour', iso(etat.lundi)).lte('jour', iso(plusJours(etat.lundi, 6)))
+      .gte('jour', iso(plusJours(etat.lundi, -1))).lte('jour', iso(plusJours(etat.lundi, 7)))   // ±1 jour : liens soir / restes
       .order('cree_le');
     if (r.error) throw r.error;
     etat.repas = r.data || [];
@@ -93,31 +93,64 @@
 
   function carte(p, lectureSeule) {
     var r = etat.parId[p.recette_id];
-    return '<div class="plat" data-id="' + h(p.id) + '">' +
+    var estReste = !!p.reste_de;
+    var aDesRestes = !estReste && etat.repas.some(function (x) { return x.reste_de === p.id; });
+    var badges = (estReste ? '<span class="badge">Restes de la veille</span>' : '') +
+      (p.froid ? '<span class="badge badge-froid">Froid</span>' : '') +
+      (aDesRestes ? '<span class="badge">Restes pour demain midi</span>' : '');
+    return '<div class="plat' + (estReste ? ' plat-reste' : '') + '" data-id="' + h(p.id) + '">' +
       '<span class="plat-titre">' + h(r ? r.titre : 'Recette supprimée') + '</span>' +
+      (badges ? '<span class="badges">' + badges + '</span>' : '') +
       (lectureSeule ? '<span class="plat-portions">' + p.portions + ' pers.</span>' :
       '<div class="plat-actions">' +
         '<button type="button" data-action="moins" aria-label="Une portion de moins"' + (p.portions <= 1 ? ' disabled' : '') + '>−</button>' +
         '<span class="plat-portions">' + p.portions + ' pers.</span>' +
         '<button type="button" data-action="plus" aria-label="Une portion de plus"' + (p.portions >= 20 ? ' disabled' : '') + '>+</button>' +
         '<button type="button" data-action="retirer" class="retirer" aria-label="Retirer ce plat">Retirer</button>' +
-      '</div>') +
+      '</div>' +
+      (p.moment === 'soir' && !estReste && !aDesRestes
+        ? '<button type="button" data-action="restes" class="plat-restes">Garder des restes pour demain midi</button>' : '')) +
     '</div>';
+  }
+
+  // Un plat « restes » ne compte pas dans les courses : ce sont les portions du soir qui portent tout.
+  // Donc ajouter, modifier ou retirer des restes ajuste aussi les portions du repas du soir.
+  function borne(n) { return Math.min(20, Math.max(1, n)); }
+
+  async function majPortions(sb, ligne, n) {
+    var r = await sb.from('planning').update({ portions: n }).eq('id', ligne.id);
+    if (!r.error) ligne.portions = n;
+    return r;
   }
 
   async function action(c, ctx, id, quoi) {
     if (etat.occupe) return;
     var p = etat.repas.find(function (x) { return x.id === id; });
     if (!p) return;
+    var parent = p.reste_de ? etat.repas.find(function (x) { return x.id === p.reste_de; }) : null;
     etat.occupe = true;
-    var r;
-    if (quoi === 'retirer') {
+    var r = {};
+    if (quoi === 'restes') {
+      var n = Math.max(1, ctx.membres.length || 2);
+      var lendemain = iso(plusJours(new Date(p.jour + 'T12:00:00'), 1));
+      r = await ctx.sb.from('planning')
+        .insert({ jour: lendemain, moment: 'midi', recette_id: p.recette_id, portions: n, reste_de: p.id, froid: false })
+        .select('id, jour, moment, recette_id, portions, reste_de, froid').single();
+      if (!r.error) {
+        etat.repas.push(r.data);
+        r = await majPortions(ctx.sb, p, borne(p.portions + n));
+      }
+    } else if (quoi === 'retirer') {
       r = await ctx.sb.from('planning').delete().eq('id', id);
-      if (!r.error) etat.repas = etat.repas.filter(function (x) { return x.id !== id; });
+      if (!r.error) {
+        // les restes d'un plat du soir partent avec lui (suppression en cascade dans la base)
+        etat.repas = etat.repas.filter(function (x) { return x.id !== id && x.reste_de !== id; });
+        if (parent) r = await majPortions(ctx.sb, parent, borne(parent.portions - p.portions));
+      }
     } else {
-      var n = Math.min(20, Math.max(1, p.portions + (quoi === 'plus' ? 1 : -1)));
-      r = await ctx.sb.from('planning').update({ portions: n }).eq('id', id);
-      if (!r.error) p.portions = n;
+      var avant = p.portions, apres = borne(p.portions + (quoi === 'plus' ? 1 : -1));
+      r = await majPortions(ctx.sb, p, apres);
+      if (!r.error && parent && apres !== avant) r = await majPortions(ctx.sb, parent, borne(parent.portions + apres - avant));
     }
     etat.occupe = false;
     etat.erreur = r.error ? App.traduireErreur(r.error) : '';
@@ -125,33 +158,67 @@
   }
 
   // ---------- Choix d'une recette ----------
+  function joursEntre(a, b) {   // dates "AAAA-MM-JJ", b - a en jours
+    return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
+  }
+  function texteRecent(j) {
+    if (j === 0) return 'Déjà au menu ce jour-là';
+    if (j === 1) return 'Au menu la veille';
+    return 'Au menu il y a ' + j + ' jours';
+  }
+
+  async function chargerRecents(sb, jour) {
+    // Plats des 4 dernières semaines avant ce repas : signalés et placés en fin de liste
+    etat.recents = {};
+    var debut = iso(plusJours(new Date(jour + 'T12:00:00'), -7 * HISTORIQUE_SEMAINES));
+    var r = await sb.from('planning').select('recette_id, jour').gte('jour', debut).lte('jour', jour);
+    if (r.error) return;   // pas bloquant
+    (r.data || []).forEach(function (l) {
+      var j = joursEntre(l.jour, jour);
+      if (etat.recents[l.recette_id] === undefined || j < etat.recents[l.recette_id]) etat.recents[l.recette_id] = j;
+    });
+  }
+
   function rendreChoix(c, ctx) {
     var ch = etat.choix;
     var d = new Date(ch.jour + 'T12:00:00');
+    etat.froid = false;
     c.innerHTML =
       '<button type="button" class="retour">Annuler</button>' +
       '<h2 class="choix-titre">' + JOURS[(d.getDay() + 6) % 7] + ' ' + d.getDate() + ', ' + (ch.moment === 'midi' ? 'le midi' : 'le soir') + '</h2>' +
       '<input type="search" class="rec-recherche choix-recherche" placeholder="Plat ou ingrédient" aria-label="Chercher une recette">' +
+      (ch.moment === 'midi'
+        ? '<label class="choix-froid"><input type="checkbox"> Pas de micro-ondes ce midi : seulement les plats qui se mangent froids</label>' : '') +
       '<p class="erreur" role="alert" hidden></p>' +
-      '<ul class="rec-liste choix-liste"></ul>';
+      '<ul class="rec-liste choix-liste"><li class="rec-aucune">Chargement…</li></ul>';
     var liste = c.querySelector('.choix-liste');
+    var pret = false;
     function maj() {
+      if (!pret) return;
       var t = App.simplifier(etat.texte.trim());
-      var res = etat.recettes.filter(function (r) { return !t || r._cherche.indexOf(t) !== -1; });
+      var res = etat.recettes.filter(function (r) {
+        return (!t || r._cherche.indexOf(t) !== -1) && (!etat.froid || r.se_mange_froid);
+      });
+      var recent = function (r) { var j = etat.recents[r.id]; return j !== undefined && j <= 7; };
+      res = res.filter(function (r) { return !recent(r); }).concat(res.filter(recent));
       liste.innerHTML = res.length ? res.map(function (r) {
+        var j = etat.recents[r.id];
         return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '"><span class="rec-titre">' + h(r.titre) + '</span>' +
-          '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span></span></button></li>';
+          '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span>' +
+          (j !== undefined ? '<span class="recent">' + texteRecent(j) + '</span>' : '') + '</span></button></li>';
       }).join('') : '<li class="rec-aucune">Aucune recette ne correspond.</li>';
     }
     c.querySelector('.retour').addEventListener('click', function () { etat.choix = null; rendreSemaine(c, ctx); });
     c.querySelector('.choix-recherche').addEventListener('input', function (e) { etat.texte = e.target.value; maj(); });
+    var caseFroid = c.querySelector('.choix-froid input');
+    if (caseFroid) caseFroid.addEventListener('change', function () { etat.froid = caseFroid.checked; maj(); });
     liste.addEventListener('click', async function (e) {
       var b = e.target.closest('.rec-item');
       if (!b || etat.occupe) return;
       etat.occupe = true;
       b.disabled = true;
       var r = await ctx.sb.from('planning')
-        .insert({ jour: ch.jour, moment: ch.moment, recette_id: b.dataset.id, portions: Math.max(1, ctx.membres.length || 2) })
+        .insert({ jour: ch.jour, moment: ch.moment, recette_id: b.dataset.id, portions: Math.max(1, ctx.membres.length || 2), froid: etat.froid })
         .select('id, jour, moment, recette_id, portions, reste_de, froid').single();
       etat.occupe = false;
       if (r.error) {
@@ -164,8 +231,8 @@
       etat.erreur = '';
       if (c.isConnected) rendreSemaine(c, ctx);
     });
-    maj();
     window.scrollTo(0, 0);
+    chargerRecents(ctx.sb, ch.jour).then(function () { pret = true; if (c.isConnected) maj(); });
   }
 
   // ---------- Chargement ----------
