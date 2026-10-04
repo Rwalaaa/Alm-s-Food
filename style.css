@@ -494,3 +494,16 @@ img { max-width: 100%; }
 .magasins select { width: 6.2rem; }
 .magasin-ajout { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; }
 .magasin-ajout input { grid-column: 1 / -1; }
+
+/* ---------- Courses : budget estimé ---------- */
+.budget { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; margin: 0.4rem 0 0.2rem; }
+.budget-total { font-family: var(--titre); font-size: 1.6rem; line-height: 1.2; margin: 0; }
+.budget-magasin { display: flex; align-items: baseline; gap: 0.4rem; color: var(--encre-douce); }
+.budget-magasin select {
+  font: inherit; font-size: 0.95rem; color: var(--encre); background: var(--carte);
+  border: 1.5px solid var(--trait); border-radius: 8px; padding: 0.3rem 0.4rem; max-width: 11rem;
+}
+.budget-note { flex-basis: 100%; margin: 0; font-size: 0.85rem; color: var(--encre-douce); }
+.budget-note:empty { display: none; }
+.rayon-budget { float: right; font-family: var(--texte); font-size: 0.85rem; color: var(--encre-douce); padding-top: 0.2rem; }
+.papier .rayon-budget { display: none; }

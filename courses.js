@@ -7,7 +7,8 @@
     ['epicerie_sucree', 'Épicerie sucrée'], ['surgeles', 'Surgelés'], ['boissons', 'Boissons'],
     ['hygiene_maison', 'Hygiène, maison'], ['autre', 'Autre']];
   var SEMAINES_MAX = 2;   // cette semaine + les 2 suivantes
-  var etat = { decalage: 0, liste: null, articles: [], erreur: '', occupe: false, papier: App.lire('papier', false) };
+  var etat = { decalage: 0, liste: null, articles: [], erreur: '', occupe: false, papier: App.lire('papier', false),
+    prix: [], magasins: [], magasin: App.lire('magasin', '') };
 
   // ---------- Dates ----------
   function lundiCible() {
@@ -68,6 +69,33 @@
     return { aAcheter: aAcheter.sort(tri), aLaMaison: aLaMaison.sort(tri) };
   };
 
+  // ---------- Budget estimé ----------
+  // Prix relevé dans le magasin choisi (le plus récent) en priorité, sinon prix de référence × écart du magasin.
+  // Coût de la quantité nécessaire (pièces arrondies au-dessus), pas du paquet entier : c'est une estimation.
+  App.estimerCourses = function (aAcheter, prix, magasins, magasinId) {
+    var mag = magasins.find(function (m) { return m.id === magasinId; });
+    var coef = mag ? Number(mag.coefficient) : 1;
+    var recent = function (a, b) { return String(b.releve_le || '').localeCompare(String(a.releve_le || '')); };
+    var couts = {}, total = 0, sansPrix = [];
+    aAcheter.forEach(function (b) {
+      var id = b.ingredient.id;
+      var lignes = prix.filter(function (p) { return p.ingredient_id === id && Number(p.quantite) > 0; });
+      var ici = mag ? lignes.filter(function (p) { return p.magasin_id === mag.id; }).sort(recent)[0] : null;
+      var ref = lignes.filter(function (p) { return !p.magasin_id; }).sort(recent)[0];
+      var p = ici || ref;
+      if (!p) { couts[id] = null; sansPrix.push(b.ingredient.nom); return; }
+      var q = b.ingredient.unite_base === 'piece' ? Math.ceil(b.quantite - 1e-9) : b.quantite;
+      var c = Number(p.prix_eur) * q / Number(p.quantite) * (ici ? 1 : coef);
+      couts[id] = c;
+      total += c;
+    });
+    return { couts: couts, total: total, sansPrix: sansPrix, magasin: mag || null };
+  };
+  App.euros = function (x) {
+    if (x > 0 && x < 0.5) return 'moins de 1 €';
+    return Math.round(x).toLocaleString('fr-FR') + ' €';
+  };
+
   async function charger(sb) {
     var lundi = lundiCible();
     var debut = etat.decalage === 0 ? App.aujourdhui() : lundi;   // cette semaine : à partir d'aujourd'hui
@@ -78,9 +106,13 @@
         .gte('jour', App.dateISO(debut)).lte('jour', App.dateISO(fin)),
       sb.from('ingredients').select('id, nom, rayon, unite_base'),
       sb.from('stock').select('ingredient_id, quantite'),
-      sb.from('liste_articles').select('id, ingredient_id, libelle_libre, quantite, coche').eq('semaine', App.dateISO(lundi)).order('id')
+      sb.from('liste_articles').select('id, ingredient_id, libelle_libre, quantite, coche').eq('semaine', App.dateISO(lundi)).order('id'),
+      sb.from('prix').select('ingredient_id, magasin_id, prix_eur, quantite, releve_le'),
+      sb.from('magasins').select('id, nom, coefficient').order('nom')
     ]);
-    for (var k = 1; k < res.length; k++) if (res[k].error) throw res[k].error;
+    for (var k = 1; k < 5; k++) if (res[k].error) throw res[k].error;
+    etat.prix = res[5].error ? [] : res[5].data || [];   // sans prix, la liste reste utilisable
+    etat.magasins = res[6].error ? [] : res[6].data || [];
     etat.periode = { debut: debut, fin: fin, lundi: App.dateISO(lundi) };
     etat.nbRepas = res[1].data.filter(function (p) { return !p.reste_de; }).length;
     etat.liste = App.calculerCourses(res[1].data, res[0], res[2].data, res[3].data);
@@ -112,6 +144,20 @@
       html += App.ecranVide('Rien à acheter pour l\'instant',
         'Ajoute des plats dans le Planning pour cette période : la liste se remplira toute seule.');
     } else {
+      var E = App.estimerCourses(L.aAcheter, etat.prix, etat.magasins, etat.magasin);
+      if (etat.prix.length && L.aAcheter.length > E.sansPrix.length) {
+        var reste = L.aAcheter.reduce(function (s, b) { var a = articleDe(b.ingredient.id); return s + (a && a.coche ? 0 : E.couts[b.ingredient.id] || 0); }, 0);
+        html += '<div class="budget"><p class="budget-total">Environ ' + App.euros(E.total) + '</p>' +
+          (etat.magasins.length
+            ? '<label class="budget-magasin">chez <select id="budget-magasin" aria-label="Magasin">' +
+                '<option value="">un magasin moyen</option>' + etat.magasins.map(function (m) {
+                  return '<option value="' + h(m.id) + '"' + (E.magasin && E.magasin.id === m.id ? ' selected' : '') + '>' + h(m.nom) + '</option>';
+                }).join('') + '</select></label>'
+            : '<p class="budget-note">aux prix d\'un magasin moyen</p>') +
+          '<p class="budget-note">' + (coches && App.euros(reste) !== App.euros(E.total) ? 'Encore ' + App.euros(reste) + ' à prendre. ' : '') +
+            (E.sansPrix.length ? E.sansPrix.length + (E.sansPrix.length > 1 ? ' articles sans prix' : ' article sans prix') + ' (' + h(E.sansPrix.join(', ')) + '). ' : '') +
+            (libres.length ? 'Divers non compté.' : '') + '</p></div>';
+      }
       html += '<div class="courses-entete"><p class="courses-compte">' + total + (total > 1 ? ' articles' : ' article') +
         (coches ? ', ' + coches + ' dans le caddie' : '') + '</p>' +
         '<button type="button" class="bascule-papier" aria-pressed="' + etat.papier + '">Mode papier</button></div>' +
@@ -119,7 +165,8 @@
       RAYONS.forEach(function (r) {
         var items = L.aAcheter.filter(function (b) { return (b.ingredient.rayon || 'autre') === r[0]; });
         if (!items.length) return;
-        html += '<section class="rayon"><h2>' + r[1] + '</h2><ul class="courses-liste">' +
+        var sousTotal = items.reduce(function (s, b) { return s + (E.couts[b.ingredient.id] || 0); }, 0);
+        html += '<section class="rayon"><h2>' + r[1] + (sousTotal ? '<span class="rayon-budget">' + App.euros(sousTotal) + '</span>' : '') + '</h2><ul class="courses-liste">' +
           items.map(function (b) {
             var a = articleDe(b.ingredient.id);
             return ligne('ing:' + b.ingredient.id, b.ingredient.nom, App.quantiteCourses(b.quantite, b.ingredient.unite_base),
@@ -144,6 +191,8 @@
     c.querySelectorAll('.article').forEach(function (b) {
       b.addEventListener('click', function () { basculer(c, ctx, b.dataset.cle); });
     });
+    var sm = c.querySelector('#budget-magasin');
+    if (sm) sm.addEventListener('change', function () { etat.magasin = sm.value; App.ecrire('magasin', sm.value); rendre(c, ctx); });
     var bp = c.querySelector('.bascule-papier');
     if (bp) bp.addEventListener('click', function () {
       etat.papier = !etat.papier;
