@@ -25,7 +25,9 @@
     return 'Du ' + lundi.getDate() + ' ' + MOIS[lundi.getMonth()] + ' au ' + dim.getDate() + ' ' + MOIS[dim.getMonth()];
   }
 
-  var etat = { lundi: null, repas: [], recettes: [], parId: {}, choix: null, texte: '', erreur: '', occupe: false, froid: false, recents: {} };
+  var etat = { lundi: null, repas: [], recettes: [], parId: {}, choix: null, texte: '', erreur: '', occupe: false, froid: false, recents: {},
+    ingParNom: {}, ouvert: null };
+  var CHAMPS = 'id, jour, moment, recette_id, portions, reste_de, froid, ingredients_retires';
 
   function lundiCourant() { return lundiDe(App.aujourdhui()); }
   function semainePassee() { return etat.lundi < lundiCourant(); }
@@ -33,7 +35,7 @@
 
   async function chargerSemaine(sb) {
     var r = await sb.from('planning')
-      .select('id, jour, moment, recette_id, portions, reste_de, froid')
+      .select(CHAMPS)
       .gte('jour', iso(plusJours(etat.lundi, -1))).lte('jour', iso(plusJours(etat.lundi, 7)))   // ±1 jour : liens soir / restes
       .order('cree_le');
     if (r.error) throw r.error;
@@ -88,6 +90,9 @@
       el.querySelectorAll('[data-action]').forEach(function (b) {
         b.addEventListener('click', function () { action(c, ctx, id, b.dataset.action); });
       });
+      el.querySelectorAll('[data-ingr]').forEach(function (k) {
+        k.addEventListener('change', function () { basculerIngredient(c, ctx, id, k.dataset.ingr, k.checked); });
+      });
     });
   }
 
@@ -109,8 +114,31 @@
         '<button type="button" data-action="retirer" class="retirer" aria-label="Retirer ce plat">Retirer</button>' +
       '</div>' +
       (p.moment === 'soir' && !estReste && !aDesRestes
-        ? '<button type="button" data-action="restes" class="plat-restes">Garder des restes pour demain midi</button>' : '')) +
+        ? '<button type="button" data-action="restes" class="plat-restes">Garder des restes pour demain midi</button>' : '') +
+      (estReste || !r ? '' : panneauIngredients(p, r))) +
     '</div>';
+  }
+
+  // Ingrédients d'un repas : décocher ce qu'on a déjà, il ne sera pas acheté pour ce repas (ingredients_retires)
+  function ingredientsDe(r) {
+    return (r.recette_ingredients || []).filter(function (ri) { return !ri.optionnel && ri.ingredients && etat.ingParNom[ri.ingredients.nom]; })
+      .map(function (ri) { return etat.ingParNom[ri.ingredients.nom]; });
+  }
+  function panneauIngredients(p, r) {
+    var ings = ingredientsDe(r);
+    if (!ings.length) return '';
+    var retires = p.ingredients_retires || [];
+    var n = ings.filter(function (i) { return retires.indexOf(i.id) !== -1; }).length;
+    var ouvert = etat.ouvert === p.id;
+    var html = '<button type="button" data-action="ingredients" class="plat-restes plat-ingr-bascule" aria-expanded="' + ouvert + '">' +
+      (ouvert ? 'Masquer les ingrédients' : 'Ingrédients' + (n ? ' (' + n + ' déjà là)' : '')) + '</button>';
+    if (!ouvert) return html;
+    return html + '<div class="plat-ingr"><p>Décoche ce que vous avez déjà : ce ne sera pas acheté pour ce repas.</p><ul>' +
+      ings.map(function (i) {
+        var garde = retires.indexOf(i.id) === -1;
+        return '<li><label class="' + (garde ? '' : 'deja-la') + '"><input type="checkbox" data-ingr="' + h(i.id) + '"' + (garde ? ' checked' : '') + '>' +
+          '<span>' + h(i.nom) + '</span>' + (garde ? '' : '<small>déjà là</small>') + '</label></li>';
+      }).join('') + '</ul></div>';
   }
 
   // Un plat « restes » ne compte pas dans les courses : ce sont les portions du soir qui portent tout.
@@ -124,6 +152,7 @@
   }
 
   async function action(c, ctx, id, quoi) {
+    if (quoi === 'ingredients') { etat.ouvert = etat.ouvert === id ? null : id; return rendreSemaine(c, ctx); }
     if (etat.occupe) return;
     var p = etat.repas.find(function (x) { return x.id === id; });
     if (!p) return;
@@ -135,7 +164,7 @@
       var lendemain = iso(plusJours(new Date(p.jour + 'T12:00:00'), 1));
       r = await ctx.sb.from('planning')
         .insert({ jour: lendemain, moment: 'midi', recette_id: p.recette_id, portions: n, reste_de: p.id, froid: false })
-        .select('id, jour, moment, recette_id, portions, reste_de, froid').single();
+        .select(CHAMPS).single();
       if (!r.error) {
         etat.repas.push(r.data);
         r = await majPortions(ctx.sb, p, borne(p.portions + n));
@@ -155,6 +184,20 @@
     etat.occupe = false;
     etat.erreur = r.error ? App.traduireErreur(r.error) : '';
     if (c.isConnected) rendreSemaine(c, ctx);
+  }
+
+  async function basculerIngredient(c, ctx, id, ingId, garde) {
+    var p = etat.repas.find(function (x) { return x.id === id; });
+    if (!p || etat.occupe) { if (c.isConnected) rendreSemaine(c, ctx); return; }
+    var avant = p.ingredients_retires || [];
+    var apres = avant.filter(function (x) { return x !== ingId; });
+    if (!garde) apres.push(ingId);
+    etat.occupe = true;
+    var r = await ctx.sb.from('planning').update({ ingredients_retires: apres }).eq('id', id);
+    etat.occupe = false;
+    if (!r.error) p.ingredients_retires = apres;
+    etat.erreur = r.error ? App.traduireErreur(r.error) : '';
+    if (document.querySelector('.onglet[data-onglet="planning"][aria-current="page"]') && !etat.choix) rendreSemaine(c, ctx);
   }
 
   // ---------- Choix d'une recette ----------
@@ -219,7 +262,7 @@
       b.disabled = true;
       var r = await ctx.sb.from('planning')
         .insert({ jour: ch.jour, moment: ch.moment, recette_id: b.dataset.id, portions: Math.max(1, ctx.membres.length || 2), froid: etat.froid })
-        .select('id, jour, moment, recette_id, portions, reste_de, froid').single();
+        .select(CHAMPS).single();
       etat.occupe = false;
       if (r.error) {
         b.disabled = false;
@@ -243,6 +286,10 @@
       etat.recettes = recettes;
       etat.parId = {};
       recettes.forEach(function (r) { etat.parId[r.id] = r; });
+      var ri = await ctx.sb.from('ingredients').select('id, nom');
+      if (ri.error) throw ri.error;
+      etat.ingParNom = {};
+      (ri.data || []).forEach(function (i) { etat.ingParNom[i.nom] = i; });
       await chargerSemaine(ctx.sb);
     } catch (err) {
       c.innerHTML = '<p class="erreur">' + h(App.traduireErreur(err)) + '</p>' +
@@ -261,6 +308,7 @@
       if (!etat.lundi) etat.lundi = lundiCourant();
       etat.choix = null;
       etat.erreur = '';
+      etat.ouvert = null;
       return recharger(c, ctx);   // toujours relu : l'autre personne a pu modifier le planning
     }
   });
