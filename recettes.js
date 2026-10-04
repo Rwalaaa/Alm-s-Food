@@ -521,7 +521,7 @@
   // Bouton retour du téléphone : ferme la fiche au lieu de quitter l'appli
   var conteneurActif = null;
   window.addEventListener('popstate', function () {
-    if (!conteneurActif || !conteneurActif.isConnected) return;
+    if (!conteneurActif || !document.querySelector('.onglet[data-onglet="recettes"][aria-current="page"]')) return;
     if (etat.form) fermerFormulaire(conteneurActif);
     else if (etat.ouverte) fermerFiche(conteneurActif);
   });

@@ -7,7 +7,7 @@
     ['epicerie_sucree', 'Épicerie sucrée'], ['surgeles', 'Surgelés'], ['boissons', 'Boissons'],
     ['hygiene_maison', 'Hygiène, maison'], ['autre', 'Autre']];
   var SEMAINES_MAX = 2;   // cette semaine + les 2 suivantes
-  var etat = { decalage: 0, liste: null, articles: [], erreur: '', occupe: false };
+  var etat = { decalage: 0, liste: null, articles: [], erreur: '', occupe: false, papier: App.lire('papier', false) };
 
   // ---------- Dates ----------
   function lundiCible() {
@@ -112,8 +112,10 @@
       html += App.ecranVide('Rien à acheter pour l\'instant',
         'Ajoute des plats dans le Planning pour cette période : la liste se remplira toute seule.');
     } else {
-      html += '<p class="courses-compte">' + total + (total > 1 ? ' articles' : ' article') +
-        (coches ? ', ' + coches + ' dans le caddie' : '') + '</p>';
+      html += '<div class="courses-entete"><p class="courses-compte">' + total + (total > 1 ? ' articles' : ' article') +
+        (coches ? ', ' + coches + ' dans le caddie' : '') + '</p>' +
+        '<button type="button" class="bascule-papier" aria-pressed="' + etat.papier + '">Mode papier</button></div>' +
+        '<div class="feuille' + (etat.papier ? ' papier' : '') + '">';
       RAYONS.forEach(function (r) {
         var items = L.aAcheter.filter(function (b) { return (b.ingredient.rayon || 'autre') === r[0]; });
         if (!items.length) return;
@@ -128,6 +130,7 @@
         libres.map(function (a) { return ligne('lib:' + a.id, a.libelle_libre, '', '', a.coche, true); }).join('') + '</ul>' +
         '<div class="courses-ajout"><input type="text" id="libre-texte" maxlength="60" placeholder="Autre chose (essuie-tout, café…)" aria-label="Ajouter un article">' +
         '<button type="button" class="bouton" id="libre-ajouter">Ajouter</button></div></section>';
+      html += '</div>';   // fin de la feuille
       if (L.aLaMaison.length) {
         html += '<details class="a-la-maison"><summary>Déjà à la maison (' + L.aLaMaison.length + ')</summary><ul>' +
           L.aLaMaison.map(function (b) { return '<li>' + h(b.ingredient.nom) + '</li>'; }).join('') + '</ul></details>';
@@ -140,6 +143,14 @@
     });
     c.querySelectorAll('.article').forEach(function (b) {
       b.addEventListener('click', function () { basculer(c, ctx, b.dataset.cle); });
+    });
+    var bp = c.querySelector('.bascule-papier');
+    if (bp) bp.addEventListener('click', function () {
+      etat.papier = !etat.papier;
+      App.ecrire('papier', etat.papier);
+      if (etat.papier) chargerPolice();
+      rendre(c, ctx);
+      gererEcran();
     });
     c.querySelectorAll('[data-retirer]').forEach(function (b) {
       b.addEventListener('click', function () { retirerLibre(c, ctx, b.dataset.retirer); });
@@ -211,6 +222,66 @@
     if (c.isConnected) rendre(c, ctx);
   }
 
+  // ---------- Mode papier ----------
+  function chargerPolice() {   // écriture manuscrite, chargée seulement si le mode papier sert
+    if (document.getElementById('police-papier')) return;
+    var l = document.createElement('link');
+    l.id = 'police-papier'; l.rel = 'stylesheet';
+    l.href = 'https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap';
+    document.head.appendChild(l);
+  }
+  if (etat.papier) chargerPolice();
+
+  // En mode papier, l'écran reste allumé tant que la liste est affichée (pratique en magasin)
+  var verrou = null;
+  async function gererEcran() {
+    var actif = etat.papier && afficheeMaintenant() && document.visibilityState === 'visible';
+    try {
+      if (actif && !verrou && navigator.wakeLock) {
+        verrou = await navigator.wakeLock.request('screen');
+        verrou.addEventListener('release', function () { verrou = null; });
+      } else if (!actif && verrou) {
+        var v = verrou; verrou = null; await v.release();
+      }
+    } catch (e) { verrou = null; }
+  }
+  setInterval(gererEcran, 5000);
+
+  // ---------- Synchro en direct entre les téléphones ----------
+  var canal = null, conteneur = null, contexte = null, minuteur = null;
+  function afficheeMaintenant() {   // la zone de contenu est partagée : vérifier que c'est bien l'onglet Courses
+    return !!(conteneur && conteneur.isConnected && document.querySelector('.onglet[data-onglet="courses"][aria-current="page"]'));
+  }
+  function ecouter(ctx, c) {
+    conteneur = c; contexte = ctx;
+    if (canal || !ctx.sb.channel) return;
+    canal = ctx.sb.channel('liste-courses')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'liste_articles' }, planifierActualisation)
+      .subscribe();
+  }
+  function planifierActualisation() {
+    clearTimeout(minuteur);
+    minuteur = setTimeout(actualiserArticles, 300);   // regroupe les changements rapprochés
+  }
+  async function actualiserArticles() {
+    if (!afficheeMaintenant() || !etat.periode) return;
+    if (etat.occupe) return planifierActualisation();
+    var r = await contexte.sb.from('liste_articles').select('id, ingredient_id, libelle_libre, quantite, coche')
+      .eq('semaine', etat.periode.lundi).order('id');
+    if (r.error || !afficheeMaintenant()) return;
+    etat.articles = r.data || [];
+    var champ = conteneur.querySelector('#libre-texte');
+    var saisie = champ ? champ.value : '', focus = champ && document.activeElement === champ;
+    rendre(conteneur, contexte);
+    var nouveau = conteneur.querySelector('#libre-texte');   // ne pas effacer ce qu'on est en train de taper
+    if (nouveau) { nouveau.value = saisie; if (focus) nouveau.focus(); }
+  }
+  // Au retour sur l'appli (téléphone en veille, autre appli) : on se remet à jour
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') planifierActualisation();
+    gererEcran();
+  });
+
   async function recharger(c, ctx) {
     c.innerHTML = '<p class="chargement">Préparation de la liste…</p>';
     try { await charger(ctx.sb); }
@@ -227,6 +298,10 @@
     id: 'courses',
     titre: 'Courses',
     icone: '<path d="M3 4h2l2.5 11h10L20 8H6.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
-    rendre: function (c, ctx) { etat.erreur = ''; return recharger(c, ctx); }
+    rendre: function (c, ctx) {
+      etat.erreur = '';
+      ecouter(ctx, c);
+      return recharger(c, ctx).then(gererEcran);
+    }
   });
 })();

@@ -389,3 +389,56 @@ img { max-width: 100%; }
 .a-la-maison { margin-top: 1.5rem; color: var(--encre-douce); }
 .a-la-maison summary { cursor: pointer; padding: 0.5rem 0; }
 .a-la-maison ul { margin: 0; padding-left: 1.2rem; }
+
+/* ---------- Courses : mode papier ---------- */
+.courses-entete { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.5rem; }
+.courses-entete .courses-compte { margin: 0; }
+.bascule-papier {
+  flex: none; border: 1.5px solid var(--trait); border-radius: 999px; background: var(--carte); color: var(--encre);
+  padding: 0.35rem 0.8rem; min-height: 38px; font-size: 0.9rem; cursor: pointer;
+}
+.bascule-papier[aria-pressed="true"] { background: var(--faience); border-color: var(--faience); color: var(--carte); font-weight: 700; }
+
+.feuille.papier {
+  --encre-stylo: #22305C;
+  --ligne: 2.4rem;
+  margin: 0.9rem -0.35rem 0;
+  padding: 0.6rem 0.9rem 1.4rem 3rem;
+  color: var(--encre-stylo);
+  background-color: #FBF8EE;
+  background-image:
+    linear-gradient(90deg, transparent 2.2rem, rgba(196, 64, 64, 0.5) 2.2rem, rgba(196, 64, 64, 0.5) calc(2.2rem + 1.5px), transparent calc(2.2rem + 1.5px)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--ligne) - 1px), rgba(47, 93, 138, 0.28) calc(var(--ligne) - 1px), rgba(47, 93, 138, 0.28) var(--ligne));
+  background-position: 0 0.6rem;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 6px 18px rgba(0, 0, 0, 0.06);
+  font-family: 'Caveat', 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive;
+  font-size: 1.55rem;
+  line-height: var(--ligne);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .feuille.papier { filter: brightness(0.9); } }
+.papier .rayon { padding-top: 0; }
+.papier .rayon h2 {
+  font-family: inherit; font-weight: 700; font-size: 1.7rem; line-height: var(--ligne); margin: 0;
+  color: #2F5D8A; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px;
+}
+.papier .courses-liste li { border: 0; min-height: var(--ligne); }
+.papier .article {
+  position: relative; grid-template-columns: auto 1fr; gap: 0.6rem;
+  min-height: var(--ligne); padding: 0; color: inherit; font: inherit; line-height: var(--ligne);
+}
+.papier .case-courses, .papier .article-nom small { display: none; }
+.papier .article-nom { display: block; line-height: var(--ligne); }
+.papier .article-qte { order: -1; font-weight: 700; }
+.papier .coche .article-nom, .papier .coche .article-qte { text-decoration: none; color: rgba(34, 48, 92, 0.45); }
+.papier .coche .article::after {   /* trait de stylo */
+  content: ''; position: absolute; left: -0.3rem; right: 0.5rem; top: 52%;
+  height: 2.5px; border-radius: 2px; background: var(--encre-stylo); transform: rotate(-1.2deg);
+}
+.papier .form-suppr { color: rgba(34, 48, 92, 0.6); font-family: var(--texte); }
+.papier .courses-ajout { margin-top: 0.4rem; }
+.papier .courses-ajout input {
+  font: inherit; font-size: 1.45rem; background: transparent; border: 0; border-bottom: 1.5px dashed rgba(34, 48, 92, 0.4);
+  border-radius: 0; color: inherit; padding: 0 0.2rem;
+}
+.papier .courses-ajout .bouton { font-family: var(--texte); }
