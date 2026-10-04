@@ -197,3 +197,67 @@ img { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---------- Onglet Recettes ---------- */
+.rec-outils { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin: 0.25rem 0 0.75rem; }
+.rec-recherche, .rec-pays {
+  font-size: 1rem;
+  padding: 0.65rem 0.75rem;
+  border: 1.5px solid var(--trait);
+  border-radius: 10px;
+  background: var(--carte);
+  min-width: 0;
+}
+.rec-pays { max-width: 9.5rem; }
+.puces {
+  display: flex; gap: 0.4rem;
+  overflow-x: auto; scrollbar-width: none;
+  margin: 0 -1.25rem; padding: 0 1.25rem 0.25rem;
+}
+.puces::-webkit-scrollbar { display: none; }
+.puce {
+  flex: none;
+  border: 1.5px solid var(--trait); border-radius: 999px;
+  background: var(--carte); color: var(--encre);
+  padding: 0.4rem 0.85rem; min-height: 38px; font-size: 0.92rem; cursor: pointer;
+}
+.puce[aria-pressed="true"] { background: var(--faience); border-color: var(--faience); color: var(--carte); font-weight: 700; }
+.rec-compte { color: var(--encre-douce); font-size: 0.9rem; margin: 0.75rem 0 0.25rem; min-height: 1.3em; }
+.rec-liste { list-style: none; margin: 0; padding: 0; }
+.rec-liste li + li { border-top: 1px solid var(--trait); }
+.rec-item {
+  display: grid; gap: 0.2rem; width: 100%; text-align: left;
+  background: none; border: 0; padding: 0.85rem 0; cursor: pointer;
+}
+.rec-titre { font-family: var(--titre); font-size: 1.12rem; line-height: 1.3; }
+.rec-infos { display: flex; flex-wrap: wrap; gap: 0 1rem; color: var(--encre-douce); font-size: 0.9rem; }
+.rec-aucune { padding: 1.5rem 0; color: var(--encre-douce); }
+
+.retour {
+  background: none; border: 0; padding: 0.5rem 0 0.5rem 1.1rem; margin-bottom: 0.25rem;
+  color: var(--faience); font-weight: 700; cursor: pointer; position: relative;
+}
+.retour::before {
+  content: ''; position: absolute; left: 0.15rem; top: 50%;
+  width: 0.5rem; height: 0.5rem; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
+}
+.fiche-titre { font-size: 1.7rem; margin-bottom: 0.4rem; }
+.fiche-desc { margin: 0 0 0.6rem; color: var(--encre-douce); }
+.fiche-etiquettes { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 1rem; }
+.fiche-etiquettes span { background: var(--faience-clair); color: var(--encre); border-radius: 999px; padding: 0.15rem 0.65rem; font-size: 0.85rem; }
+.fiche h3 { font-family: var(--titre); font-weight: 400; font-size: 1.2rem; margin: 1.4rem 0 0.5rem; }
+.fiche-chiffres, .fiche-nutri { display: grid; gap: 0.5rem; margin: 0; }
+.fiche-chiffres { grid-template-columns: repeat(3, 1fr); }
+.fiche-nutri { grid-template-columns: repeat(4, 1fr); }
+.fiche-chiffres div, .fiche-nutri div { border-top: 3px solid var(--moutarde); padding-top: 0.35rem; }
+.fiche-nutri div { border-top-color: var(--faience-clair); }
+.fiche dt { font-size: 0.8rem; color: var(--encre-douce); }
+.fiche dd { margin: 0; font-weight: 700; font-size: 1.02rem; }
+.fiche-ingr { list-style: none; padding: 0; margin: 0; }
+.fiche-ingr li { padding: 0.35rem 0; border-bottom: 1px dashed var(--trait); }
+.fiche-ingr .q { font-weight: 700; }
+.fiche-etapes { padding-left: 1.4rem; margin: 0; }
+.fiche-etapes li { padding: 0.35rem 0 0.55rem 0.25rem; }
+.fiche-etapes li::marker { font-family: var(--titre); color: var(--faience); }
+.minuteur { display: inline-block; font-size: 0.85rem; font-weight: 700; color: var(--faience); background: var(--faience-clair); border-radius: 6px; padding: 0 0.4rem; margin-left: 0.15rem; }
