@@ -261,3 +261,43 @@ img { max-width: 100%; }
 .fiche-etapes li { padding: 0.35rem 0 0.55rem 0.25rem; }
 .fiche-etapes li::marker { font-family: var(--titre); color: var(--faience); }
 .minuteur { display: inline-block; font-size: 0.85rem; font-weight: 700; color: var(--faience); background: var(--faience-clair); border-radius: 6px; padding: 0 0.4rem; margin-left: 0.15rem; }
+
+/* ---------- Onglet Planning ---------- */
+.sem-nav { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; gap: 0.5rem; margin: 0.25rem 0 0.5rem; }
+.sem-fleche {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1.5px solid var(--trait); background: var(--carte); color: var(--faience);
+  font-size: 1.5rem; line-height: 1; cursor: pointer;
+}
+.sem-fleche:disabled { opacity: 0.35; cursor: default; }
+.sem-titre { text-align: center; display: grid; font-weight: 700; }
+.sem-titre small { font-weight: 400; color: var(--encre-douce); font-size: 0.85rem; }
+.bandeau { padding: 0.5rem 0; }
+.jours { list-style: none; margin: 0; padding: 0; }
+.jour { padding: 0.9rem 0 0.6rem; border-bottom: 1px solid var(--trait); }
+.jour h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
+.jour.aujourdhui h2 { display: inline-block; box-shadow: inset 0 -0.45em 0 color-mix(in srgb, var(--moutarde) 45%, transparent); }
+.creneau { display: grid; grid-template-columns: 3.2rem 1fr; gap: 0.5rem; align-items: start; padding: 0.3rem 0; }
+.moment { color: var(--encre-douce); font-size: 0.85rem; padding-top: 0.55rem; }
+.plats { display: grid; gap: 0.4rem; }
+.plat {
+  background: var(--carte); border: 1.5px solid var(--trait); border-left: 4px solid var(--faience);
+  border-radius: 10px; padding: 0.5rem 0.65rem; display: grid; gap: 0.35rem;
+}
+.plat-titre { font-weight: 700; line-height: 1.3; }
+.plat-actions { display: flex; align-items: center; gap: 0.4rem; }
+.plat-actions button {
+  min-width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--trait);
+  background: var(--fond); color: var(--encre); font-size: 1.1rem; cursor: pointer;
+}
+.plat-actions button:disabled { opacity: 0.35; }
+.plat-actions .retirer { margin-left: auto; font-size: 0.85rem; padding: 0 0.7rem; color: var(--encre-douce); }
+.plat-portions { font-size: 0.9rem; min-width: 3.6rem; text-align: center; color: var(--encre-douce); }
+.ajouter {
+  justify-self: start; background: none; border: 1.5px dashed var(--trait); border-radius: 10px;
+  color: var(--faience); font-weight: 700; padding: 0.5rem 0.8rem; min-height: 40px; cursor: pointer;
+}
+.vide-creneau { color: var(--encre-douce); font-size: 0.9rem; padding-top: 0.5rem; }
+.choix-titre { font-size: 1.4rem; margin: 0.25rem 0 0.75rem; }
+.choix-recherche { width: 100%; margin-bottom: 0.5rem; }
+.ajouter-autre { border: 0; padding: 0.2rem 0; min-height: 32px; font-size: 0.9rem; font-weight: 400; }

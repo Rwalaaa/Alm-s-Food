@@ -26,6 +26,8 @@
       .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
+  App.simplifier = simplifier;
+
   function dureeTexte(min) {
     if (min < 60) return min + ' min';
     var hh = Math.floor(min / 60), mm = min % 60;
@@ -46,6 +48,12 @@
     });
     etat.recettes = r.data;
   }
+
+  // Utilisé par les autres onglets (planning…) : recettes chargées une seule fois
+  App.chargerRecettes = async function (sb) {
+    if (!etat.recettes) await charger(sb);
+    return etat.recettes;
+  };
 
   function filtrer() {
     var t = simplifier(etat.texte.trim());
