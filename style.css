@@ -315,3 +315,44 @@ img { max-width: 100%; }
 .choix-froid input { width: 1.2rem; height: 1.2rem; margin-top: 0.1rem; accent-color: var(--faience); flex: none; }
 .recent { color: #8A6400; font-weight: 700; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .recent { color: var(--moutarde); } }
+
+/* ---------- Recettes perso : formulaire ---------- */
+.rec-ajouter { margin: 0.25rem 0 0.75rem; }
+.perso { color: var(--faience); font-weight: 700; }
+.fiche-etiquettes .perso { background: var(--faience); color: var(--carte); }
+.form-recette { gap: 0.9rem; }
+.form-recette h3 { font-family: var(--titre); font-weight: 400; font-size: 1.2rem; margin: 0.6rem 0 0; }
+.form-recette select, .form-recette textarea {
+  font: inherit; font-weight: 400; font-size: 1rem; width: 100%;
+  padding: 0.65rem 0.75rem; border: 1.5px solid var(--trait); border-radius: 10px; background: var(--carte); color: var(--encre);
+}
+.form-recette textarea { resize: vertical; min-height: 3.2rem; }
+.form-ligne3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+.form-ligne2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+.champ-unite { display: flex; align-items: center; gap: 0.35rem; font-weight: 400; }
+.champ-unite input { min-width: 0; }
+.champ-unite span { color: var(--encre-douce); font-size: 0.9rem; flex: none; }
+.form-cases { border: 0; padding: 0; margin: 0; display: grid; gap: 0.45rem; }
+.form-cases legend { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.35rem; padding: 0; }
+.form-cases label, .formulaire label.case { display: flex; flex-direction: row; align-items: center; gap: 0.55rem; font-weight: 400; }
+.form-cases input, label.case input { width: 1.2rem; height: 1.2rem; accent-color: var(--faience); flex: none; }
+.form-ingr { list-style: none; margin: 0; padding: 0; }
+.form-ingr li { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px dashed var(--trait); }
+.form-suppr { background: none; border: 0; color: var(--encre-douce); text-decoration: underline; font-size: 0.88rem; padding: 0.4rem 0; cursor: pointer; flex: none; }
+.editeur-ingr { display: grid; gap: 0.75rem; padding: 0.85rem; border: 1.5px solid var(--faience); border-radius: 12px; background: var(--carte); }
+.editeur-nom { font-weight: 700; margin: 0; }
+.editeur-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+.suggestions { list-style: none; margin: -0.4rem 0 0; padding: 0; }
+.suggestions button {
+  width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--trait);
+  padding: 0.65rem 0.25rem; min-height: 44px; cursor: pointer; color: var(--encre);
+}
+.suggestions [data-creer] { color: var(--faience); font-weight: 700; }
+.form-etapes { padding-left: 1.3rem; margin: 0; display: grid; gap: 0.6rem; }
+.form-etapes li::marker { font-family: var(--titre); color: var(--faience); }
+.form-etape-bas { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-top: 0.35rem; }
+.form-etape-bas .champ-unite { max-width: 9rem; }
+.form-recette input[type="checkbox"] { width: 1.2rem; height: 1.2rem; padding: 0; margin: 0; }
+.formulaire label .discret { font-weight: 400; }
+.form-etapes { list-style: none; padding: 0; counter-reset: etape; }
+.form-etapes li::before { counter-increment: etape; content: "Étape " counter(etape); display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.3rem; }
