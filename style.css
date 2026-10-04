@@ -1,0 +1,199 @@
+/* ---------- Couleurs (clair / sombre) ---------- */
+:root {
+  --encre: #1F2D3D;
+  --encre-douce: #5A6B7C;
+  --faience: #2F5D8A;
+  --faience-clair: #DCE6F0;
+  --moutarde: #D9A21B;
+  --fond: #F7F9FB;
+  --carte: #FFFFFF;
+  --trait: #D5DEE7;
+  --erreur: #B3261E;
+  --vichy: rgba(47, 93, 138, 0.42);
+  --titre: 'Young Serif', Georgia, 'Times New Roman', serif;
+  --texte: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --barre-h: 64px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --encre: #E6EDF3;
+    --encre-douce: #9AAAB9;
+    --faience: #8DB4DA;
+    --faience-clair: #22303D;
+    --moutarde: #E8B940;
+    --fond: #121A22;
+    --carte: #1A242E;
+    --trait: #2C3A47;
+    --erreur: #F2B8B5;
+    --vichy: rgba(141, 180, 218, 0.30);
+  }
+}
+:root[data-theme="dark"] {
+  --encre: #E6EDF3; --encre-douce: #9AAAB9; --faience: #8DB4DA; --faience-clair: #22303D;
+  --moutarde: #E8B940; --fond: #121A22; --carte: #1A242E; --trait: #2C3A47;
+  --erreur: #F2B8B5; --vichy: rgba(141, 180, 218, 0.30);
+}
+
+/* ---------- Base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--fond);
+  color: var(--encre);
+  font-family: var(--texte);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+h1, h2 { font-family: var(--titre); font-weight: 400; line-height: 1.2; margin: 0; }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--moutarde); outline-offset: 2px; }
+img { max-width: 100%; }
+.chargement { padding: 3rem 1.5rem; text-align: center; color: var(--encre-douce); }
+.discret { color: var(--encre-douce); }
+
+/* ---------- Nappe vichy : l'élément signature ---------- */
+.vichy {
+  height: 18px;
+  background-color: var(--carte);
+  background-image:
+    linear-gradient(90deg, var(--vichy) 50%, transparent 50%),
+    linear-gradient(var(--vichy) 50%, transparent 50%);
+  background-size: 14px 14px;
+}
+
+/* ---------- Écrans d'accueil (connexion, foyer) ---------- */
+.accueil { min-height: 100%; padding-top: env(safe-area-inset-top, 0px); }
+.accueil .vichy { height: 28vh; max-height: 220px; min-height: 120px; }
+.accueil-corps {
+  max-width: 26rem;
+  margin: 0 auto;
+  padding: 2rem 1.5rem calc(2rem + env(safe-area-inset-bottom, 0px));
+}
+.marque { font-size: 2.6rem; color: var(--faience); margin-bottom: 1.5rem; }
+.intro { margin: 0 0 1.25rem; }
+
+.formulaire { display: grid; gap: 1rem; }
+.formulaire label { display: grid; gap: 0.35rem; font-weight: 700; font-size: 0.95rem; }
+.formulaire input {
+  font-weight: 400;
+  font-size: 1.05rem;
+  padding: 0.75rem 0.85rem;
+  border: 1.5px solid var(--trait);
+  border-radius: 10px;
+  background: var(--carte);
+  width: 100%;
+}
+.formulaire input:focus { border-color: var(--faience); outline: none; box-shadow: 0 0 0 3px var(--faience-clair); }
+.erreur { color: var(--erreur); margin: 0; font-size: 0.95rem; }
+
+.bouton {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  background: var(--faience);
+  color: #fff;
+  font-weight: 700;
+  padding: 0.85rem 1.2rem;
+  min-height: 48px;
+  cursor: pointer;
+}
+.bouton:disabled { opacity: 0.6; cursor: progress; }
+.bouton.secondaire { background: transparent; color: var(--faience); border: 1.5px solid var(--faience); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bouton:not(.secondaire) { color: #121A22; } }
+.lien {
+  background: none; border: 0; padding: 0.75rem 0; margin-top: 1rem;
+  color: var(--encre-douce); text-decoration: underline; cursor: pointer;
+}
+
+.bascule {
+  display: grid; grid-template-columns: 1fr 1fr;
+  border: 1.5px solid var(--faience); border-radius: 10px; overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+.bascule button {
+  background: transparent; border: 0; padding: 0.7rem 0.5rem; min-height: 44px;
+  color: var(--faience); font-weight: 700; cursor: pointer;
+}
+.bascule button[aria-selected="true"] { background: var(--faience); color: var(--carte); }
+
+/* ---------- Appli ---------- */
+.appli { min-height: 100%; }
+.entete {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--fond);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.entete .vichy { height: 10px; }
+.entete h1 {
+  font-size: 1.9rem;
+  padding: 0.9rem 1.25rem 0.6rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+.contenu {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 0.5rem 1.25rem calc(var(--barre-h) + 1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.barre {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: var(--carte);
+  border-top: 1px solid var(--trait);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.onglet {
+  appearance: none;
+  background: none;
+  border: 0;
+  height: var(--barre-h);
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  color: var(--encre-douce);
+  font-size: 0.75rem;
+  cursor: pointer;
+  position: relative;
+}
+.onglet[aria-current="page"] { color: var(--faience); font-weight: 700; }
+.onglet[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 30%; right: 30%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--moutarde);
+}
+
+/* ---------- Contenus communs ---------- */
+.vide { padding: 2.5rem 0.25rem; max-width: 30rem; }
+.vide-titre { font-family: var(--titre); font-size: 1.3rem; margin: 0 0 0.4rem; }
+.vide p { margin: 0; color: var(--encre-douce); }
+.vide .vide-titre { color: var(--encre); }
+
+.bloc { padding: 1.25rem 0; border-bottom: 1px solid var(--trait); }
+.bloc:last-child { border-bottom: 0; }
+.bloc h2 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+.bloc p { margin: 0 0 0.75rem; }
+.membres { list-style: none; padding: 0; margin: 0; }
+.membres li { padding: 0.25rem 0; }
+.code {
+  font-family: var(--titre);
+  font-size: 2rem;
+  letter-spacing: 0.15em;
+  color: var(--faience);
+  margin: 0.25rem 0 0.9rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
