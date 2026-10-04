@@ -363,3 +363,29 @@ img { max-width: 100%; }
   appearance: none; border: 1.5px solid var(--erreur); border-radius: 10px; background: transparent;
   color: var(--erreur); font-weight: 700; min-height: 48px; cursor: pointer;
 }
+
+/* ---------- Onglet Courses ---------- */
+.courses-compte { color: var(--encre-douce); font-size: 0.9rem; margin: 0.5rem 0 0; }
+.rayon { padding-top: 0.9rem; }
+.rayon h2 { font-size: 1.1rem; margin-bottom: 0.25rem; color: var(--faience); }
+.courses-liste { list-style: none; margin: 0; padding: 0; }
+.courses-liste li { display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--trait); }
+.article {
+  flex: 1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem;
+  background: none; border: 0; padding: 0.6rem 0; min-height: 48px; text-align: left; cursor: pointer; color: var(--encre);
+}
+.case-courses { width: 1.35rem; height: 1.35rem; border: 2px solid var(--trait); border-radius: 6px; display: inline-block; position: relative; }
+.article-nom { display: grid; line-height: 1.3; }
+.article-nom small { color: var(--encre-douce); font-size: 0.8rem; }
+.article-qte { font-weight: 700; white-space: nowrap; }
+.coche .case-courses { background: var(--faience); border-color: var(--faience); }
+.coche .case-courses::after {
+  content: ''; position: absolute; left: 0.38rem; top: 0.12rem; width: 0.35rem; height: 0.7rem;
+  border: solid var(--carte); border-width: 0 2.5px 2.5px 0; transform: rotate(45deg);
+}
+.coche .article-nom, .coche .article-qte { text-decoration: line-through; color: var(--encre-douce); }
+.courses-ajout { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem; }
+.courses-ajout input { font-size: 1rem; padding: 0.65rem 0.75rem; border: 1.5px solid var(--trait); border-radius: 10px; background: var(--carte); min-width: 0; }
+.a-la-maison { margin-top: 1.5rem; color: var(--encre-douce); }
+.a-la-maison summary { cursor: pointer; padding: 0.5rem 0; }
+.a-la-maison ul { margin: 0; padding-left: 1.2rem; }
