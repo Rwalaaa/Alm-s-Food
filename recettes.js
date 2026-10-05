@@ -258,12 +258,12 @@
     var n = r._nutri;
     var ingr = (r.recette_ingredients || []).slice().sort(function (a, b) { return a.optionnel - b.optionnel; });
     c.innerHTML =
-      '<button type="button" class="retour">Toutes les recettes</button>' +
+      '<div class="fiche-hero"><button type="button" class="retour">Toutes les recettes</button>' + App.vignette(r) + '</div>' +
       '<article class="fiche">' +
         '<h2 class="fiche-titre">' + h(r.titre) + '</h2>' +
         (r.description ? '<p class="fiche-desc">' + h(r.description) + '</p>' : '') +
         '<p class="fiche-etiquettes">' + (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') +
-          (r.categories || []).map(function (e) { return '<span>' + h(e) + '</span>'; }).join('') + '</p>' +
+          (r.categories || []).map(function (e) { return '<span data-etq="' + h(e) + '">' + h(e) + '</span>'; }).join('') + '</p>' +
         texteSaison(r) +
         '<dl class="fiche-chiffres">' +
           '<div><dt>Préparation</dt><dd>' + dureeTexte(r.temps_prep_min) + '</dd></div>' +

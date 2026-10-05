@@ -289,24 +289,57 @@ img { max-width: 100%; }
   width: 0.5rem; height: 0.5rem; border-left: 2px solid currentColor; border-bottom: 2px solid currentColor;
   transform: translateY(-50%) rotate(45deg);
 }
-.fiche-titre { font-size: 1.7rem; margin-bottom: 0.4rem; }
-.fiche-desc { margin: 0 0 0.6rem; color: var(--encre-douce); }
+/* Lot 15e : fiche recette — grande vignette, feuille blanche arrondie, pavés de chiffres */
+.fiche-hero { position: relative; margin: 0 -1.25rem; }
+.fiche-hero .rec-vignette { height: 236px; border-radius: 0; align-items: flex-start; padding-top: 68px; }
+.fiche-hero .rec-vignette svg { width: 132px; height: 132px; }
+.fiche-hero .retour {
+  position: absolute; top: 14px; left: 1.25rem; z-index: 1; margin: 0;
+  background: var(--carte); color: var(--encre); border-radius: 22px; min-height: 44px; padding: 0 1rem 0 1.9rem;
+}
+.fiche-hero .retour::before { left: 1rem; }
+.fiche { position: relative; background: var(--carte); border-radius: 28px; margin: -28px -1.25rem 0; padding: 22px 1.25rem 1.25rem; }
+.fiche-titre { font-size: 1.6rem; margin-bottom: 0.4rem; }
+.fiche-desc { margin: 0 0 0.7rem; color: var(--encre-douce); }
 .fiche-etiquettes { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0 0 1rem; }
-.fiche-etiquettes span { background: var(--faience-clair); color: var(--encre); border-radius: 999px; padding: 0.15rem 0.65rem; font-size: 0.85rem; }
-.fiche h3 { font-family: var(--titre); font-weight: 400; font-size: 1.2rem; margin: 1.4rem 0 0.5rem; }
-.fiche-chiffres, .fiche-nutri { display: grid; gap: 0.5rem; margin: 0; }
+.fiche-etiquettes span { background: var(--faience-clair); color: var(--encre); border-radius: 10px; padding: 0.2rem 0.6rem; font-size: 0.8rem; font-weight: 700; }
+.fiche-etiquettes [data-etq="Végé"] { background: #ECE4FB; color: #4A2F8F; }
+.fiche-etiquettes [data-etq="Petit budget"], .fiche-etiquettes [data-etq="Soupe"] { background: #FFF1C9; color: #6B4E00; }
+.fiche-etiquettes [data-etq="Rapide"], .fiche-etiquettes [data-etq="Léger"], .fiche-etiquettes [data-etq="Gamelle"] { background: #DFF3E4; color: #1E5C3A; }
+.fiche-etiquettes [data-etq="Copieux"], .fiche-etiquettes [data-etq="Réconfortant"] { background: #FFE3D3; color: #8A2E12; }
+.fiche h3 { font-family: var(--titre); font-weight: 600; font-size: 1.2rem; margin: 1.4rem 0 0.5rem; }
+.fiche-chiffres, .fiche-nutri { display: grid; gap: 8px; margin: 0; }
 .fiche-chiffres { grid-template-columns: repeat(3, 1fr); }
 .fiche-nutri { grid-template-columns: repeat(4, 1fr); }
-.fiche-chiffres div, .fiche-nutri div { border-top: 3px solid var(--moutarde); padding-top: 0.35rem; }
-.fiche-nutri div { border-top-color: var(--faience-clair); }
-.fiche dt { font-size: 0.8rem; color: var(--encre-douce); }
-.fiche dd { margin: 0; font-weight: 700; font-size: 1.02rem; }
+.fiche-chiffres div, .fiche-nutri div { background: var(--fond); border-radius: 16px; padding: 10px 6px; text-align: center; }
+.fiche dt { font-size: 0.78rem; color: var(--encre-douce); }
+.fiche dd { margin: 0; font-weight: 700; font-size: 1rem; }
 .fiche-ingr { list-style: none; padding: 0; margin: 0; }
-.fiche-ingr li { padding: 0.35rem 0; border-bottom: 1px dashed var(--trait); }
+.fiche-ingr li { padding: 0.55rem 0; border-bottom: 1px solid var(--trait); }
+.fiche-ingr li:last-child { border-bottom: 0; }
 .fiche-ingr .q { font-weight: 700; }
-.fiche-etapes { padding-left: 1.4rem; margin: 0; }
-.fiche-etapes li { padding: 0.35rem 0 0.55rem 0.25rem; }
-.fiche-etapes li::marker { font-family: var(--titre); color: var(--faience); }
+.fiche-ingr .gout-pas { font-size: 0.75rem; font-weight: 700; font-style: normal; white-space: nowrap; background: #FFE3D3; color: #8A2E12; border-radius: 8px; padding: 1px 7px; }
+.fiche-etapes { list-style: none; counter-reset: etape; padding: 0; margin: 0; }
+.fiche-etapes li { counter-increment: etape; position: relative; padding: 0.35rem 0 0.8rem 2.7rem; min-height: 2.2rem; }
+.fiche-etapes li::before {
+  content: counter(etape); position: absolute; left: 0; top: 0.2rem;
+  width: 1.95rem; height: 1.95rem; border-radius: 50%; display: grid; place-items: center;
+  background: #16181D; color: #C6F35E; font-weight: 700; font-size: 0.9rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fiche-etapes li::before { background: #C6F35E; color: #16181D; }
+  :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Végé"] { background: #2E2A3D; color: #D5C8F7; }
+  :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Petit budget"], :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Soupe"] { background: #3A3424; color: #F2D27A; }
+  :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Rapide"], :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Léger"], :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Gamelle"] { background: #22332A; color: #BFE8CB; }
+  :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Copieux"], :root:not([data-theme="light"]) .fiche-etiquettes [data-etq="Réconfortant"] { background: #3B2A24; color: #F5C2AE; }
+  :root:not([data-theme="light"]) .fiche-ingr .gout-pas { background: #3B2A24; color: #F5C2AE; }
+}
+:root[data-theme="dark"] .fiche-etapes li::before { background: #C6F35E; color: #16181D; }
+:root[data-theme="dark"] .fiche-etiquettes [data-etq="Végé"] { background: #2E2A3D; color: #D5C8F7; }
+:root[data-theme="dark"] .fiche-etiquettes [data-etq="Petit budget"], :root[data-theme="dark"] .fiche-etiquettes [data-etq="Soupe"] { background: #3A3424; color: #F2D27A; }
+:root[data-theme="dark"] .fiche-etiquettes [data-etq="Rapide"], :root[data-theme="dark"] .fiche-etiquettes [data-etq="Léger"], :root[data-theme="dark"] .fiche-etiquettes [data-etq="Gamelle"] { background: #22332A; color: #BFE8CB; }
+:root[data-theme="dark"] .fiche-etiquettes [data-etq="Copieux"], :root[data-theme="dark"] .fiche-etiquettes [data-etq="Réconfortant"] { background: #3B2A24; color: #F5C2AE; }
+:root[data-theme="dark"] .fiche-ingr .gout-pas { background: #3B2A24; color: #F5C2AE; }
 .minuteur { display: inline-block; font-size: 0.85rem; font-weight: 700; color: var(--faience); background: var(--faience-clair); border-radius: 6px; padding: 0 0.4rem; margin-left: 0.15rem; }
 
 /* ---------- Onglet Planning ---------- */
@@ -604,7 +637,7 @@ img { max-width: 100%; }
 .prix-champ small { font-weight: 400; font-size: 0.82rem; }
 
 /* ---------- Mode cuisine (lot 10a) ---------- */
-.fiche-cuisiner { width: 100%; margin: 1.1rem 0 0.2rem; font-size: 1.05rem; }
+.fiche-cuisiner { width: 100%; margin: 1.1rem 0 0.2rem; font-size: 1.05rem; min-height: 54px; border-radius: 27px; }
 .cuisine-ouverte, .cuisine-ouverte body { overflow: hidden; }
 .cuisine {
   position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
@@ -696,7 +729,9 @@ img { max-width: 100%; }
 .fiche-saison { margin: 0 0 1rem; font-size: 0.95rem; line-height: 1.5; }
 /* Anti-gaspi (lot 13b) */
 .placard { color: var(--encre); font-weight: 700; }
-.fiche-ingr .placard { font-size: 0.85rem; color: var(--faience); white-space: nowrap; }
+.fiche-ingr .placard { font-size: 0.75rem; font-weight: 700; white-space: nowrap; background: #DFF3E4; color: #1E5C3A; border-radius: 8px; padding: 1px 7px; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fiche-ingr .placard { background: #22332A; color: #BFE8CB; } }
+:root[data-theme="dark"] .fiche-ingr .placard { background: #22332A; color: #BFE8CB; }
 /* Goûts par personne (lot 14a) */
 #bloc-gouts h3 { font-size: 1rem; margin: 1rem 0 0.4rem; }
 .gouts-vide { margin: 0; }
