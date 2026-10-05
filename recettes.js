@@ -29,6 +29,42 @@
 
   App.simplifier = simplifier;
 
+  // ---------- Saisonnalité ----------
+  var MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  App.MOIS = MOIS;
+  // {9,10,11,12,1} -> « de septembre à janvier » ; {3,4,5,9,10,11} -> « de mars à mai et de septembre à novembre »
+  function periodes(mois) {
+    var m = mois.map(Number).filter(function (x) { return x >= 1 && x <= 12; });
+    if (m.length >= 12) return 'toute l\'année';
+    var dans = function (x) { return m.indexOf(((x + 11) % 12) + 1) !== -1; };   // x : 1..12
+    var debuts = m.filter(function (x) { return !dans(x - 1 === 0 ? 12 : x - 1); }).sort(function (a, b) { return a - b; });
+    return debuts.map(function (d) {
+      var f = d;
+      while (dans(f === 12 ? 1 : f + 1)) f = f === 12 ? 1 : f + 1;
+      return f === d ? 'en ' + MOIS[d - 1] : 'de ' + MOIS[d - 1] + ' à ' + MOIS[f - 1];
+    }).join(' et ');
+  }
+  // Ingrédients (non facultatifs) qui ont une saison : de saison ou hors saison pour ce mois (1..12)
+  App.saison = function (r, mois) {
+    var en = [], hors = [];
+    (r.recette_ingredients || []).forEach(function (ri) {
+      var i = ri.ingredients;
+      if (!i || ri.optionnel || !i.mois_saison || !i.mois_saison.length) return;
+      if (i.mois_saison.map(Number).indexOf(mois) !== -1) en.push(i.nom);
+      else hors.push({ nom: i.nom, quand: periodes(i.mois_saison) });
+    });
+    return { en: en, hors: hors, deSaison: en.length > 0 && hors.length === 0 };
+  };
+  App.periodesSaison = periodes;
+  function moisCourant() { return (App.aujourdhui ? App.aujourdhui() : new Date()).getMonth() + 1; }
+  // Petite mention pour les listes (recettes, choix d'un plat)
+  App.mentionSaison = function (r, mois) {
+    var s = App.saison(r, mois);
+    if (s.hors.length) return '<span class="hors-saison">Hors saison</span>';
+    if (s.deSaison) return '<span class="saison">De saison</span>';
+    return '';
+  };
+
   function dureeTexte(min) {
     if (min < 60) return min + ' min';
     var hh = Math.floor(min / 60), mm = min % 60;
@@ -39,7 +75,7 @@
     var r = await sb.from('recettes')
       .select('id, titre, description, categories, pays, vegetarien, temps_prep_min, temps_cuisson_min, portions, ' +
         'se_mange_froid, source, image_url, photo_perso_url, etapes, recette_ingredients(quantite, libelle_quantite, optionnel, ' +
-        'ingredients(nom, rayon, unite_base, poids_piece_g, kcal_100g, proteines_100g, glucides_100g, lipides_100g))')
+        'ingredients(nom, rayon, unite_base, poids_piece_g, kcal_100g, proteines_100g, glucides_100g, lipides_100g, mois_saison))')
       .order('titre');
     if (r.error) throw r.error;
     r.data.forEach(function (rec) {
@@ -61,7 +97,10 @@
     return etat.recettes.filter(function (r) {
       if (t && r._cherche.indexOf(t) === -1) return false;
       if (etat.pays && r.pays !== etat.pays) return false;
-      return etat.filtres.every(function (f) { return (r.categories || []).indexOf(f) !== -1; });
+      return etat.filtres.every(function (f) {
+        if (f === 'De saison') return App.saison(r, moisCourant()).deSaison;
+        return (r.categories || []).indexOf(f) !== -1;
+      });
     });
   }
 
@@ -78,7 +117,7 @@
         '</select>' +
       '</div>' +
       '<div class="puces" role="group" aria-label="Filtres">' +
-        ETIQUETTES.map(function (e) {
+        ['De saison'].concat(ETIQUETTES).map(function (e) {
           return '<button type="button" class="puce" aria-pressed="' + (etat.filtres.indexOf(e) !== -1) + '">' + h(e) + '</button>';
         }).join('') +
       '</div>' +
@@ -95,7 +134,7 @@
           return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '">' +
             '<span class="rec-titre">' + h(r.titre) + '</span>' +
             '<span class="rec-infos"><span>' + dureeTexte(r.temps_prep_min + r.temps_cuisson_min) + '</span>' +
-            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') +
+            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + App.mentionSaison(r, moisCourant()) +
             (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') + '</span>' +
             '</button></li>';
         }).join('');
@@ -122,6 +161,16 @@
   }
 
   // ---------- Fiche ----------
+  function texteSaison(r) {
+    var m = moisCourant(), s = App.saison(r, m);
+    if (!s.en.length && !s.hors.length) return '';
+    return '<p class="fiche-saison">' +
+      (s.en.length ? '<span class="saison">De saison en ' + MOIS[m - 1] + ' :</span> ' + h(s.en.join(', ').toLowerCase()) + '.' : '') +
+      (s.en.length && s.hors.length ? '<br>' : '') +
+      (s.hors.length ? '<span class="hors-saison">Hors saison :</span> ' + s.hors.map(function (x) {
+        return h(x.nom.toLowerCase()) + ' (' + x.quand + ')'; }).join(', ') + '.' : '') + '</p>';
+  }
+
   function rendreFiche(c) {
     var r = etat.recettes.find(function (x) { return x.id === etat.ouverte; });
     if (!r) { etat.ouverte = null; return rendreListe(c); }
@@ -134,6 +183,7 @@
         (r.description ? '<p class="fiche-desc">' + h(r.description) + '</p>' : '') +
         '<p class="fiche-etiquettes">' + (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') +
           (r.categories || []).map(function (e) { return '<span>' + h(e) + '</span>'; }).join('') + '</p>' +
+        texteSaison(r) +
         '<dl class="fiche-chiffres">' +
           '<div><dt>Préparation</dt><dd>' + dureeTexte(r.temps_prep_min) + '</dd></div>' +
           '<div><dt>Cuisson</dt><dd>' + dureeTexte(r.temps_cuisson_min) + '</dd></div>' +

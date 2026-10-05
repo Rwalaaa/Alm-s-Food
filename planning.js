@@ -257,11 +257,20 @@
         return (!t || r._cherche.indexOf(t) !== -1) && (!etat.froid || r.se_mange_froid);
       });
       var recent = function (r) { var j = etat.recents[r.id]; return j !== undefined && j <= 7; };
-      res = res.filter(function (r) { return !recent(r); }).concat(res.filter(recent));
+      // Ordre : plats de saison, puis les autres, puis hors saison ; les plats récents toujours en fin de liste
+      var mois = d.getMonth() + 1;
+      var rang = function (r) {
+        if (!App.saison) return 1;
+        var s = App.saison(r, mois);
+        return (recent(r) ? 3 : 0) + (s.hors.length ? 2 : s.deSaison ? 0 : 1);
+      };
+      res = res.map(function (r, k) { return { r: r, k: k, n: rang(r) }; })
+        .sort(function (a, b) { return a.n - b.n || a.k - b.k; }).map(function (x) { return x.r; });
       liste.innerHTML = res.length ? res.map(function (r) {
         var j = etat.recents[r.id];
         return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '"><span class="rec-titre">' + h(r.titre) + '</span>' +
           '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span>' +
+          (App.mentionSaison ? App.mentionSaison(r, d.getMonth() + 1) : '') +
           (j !== undefined ? '<span class="recent">' + texteRecent(j) + '</span>' : '') + '</span></button></li>';
       }).join('') : '<li class="rec-aucune">Aucune recette ne correspond.</li>';
     }

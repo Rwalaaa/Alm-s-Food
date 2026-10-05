@@ -628,3 +628,7 @@ img { max-width: 100%; }
 .ciqual-choisi p { flex: 1; min-width: 0; margin: 0; display: grid; gap: 0.15rem; }
 .ciqual-choisi strong { font-weight: 700; }
 .ciqual-choisi .lien { margin: 0; padding: 0.15rem 0; flex: none; color: var(--faience); }
+/* Saisonnalité (lot 13a) */
+.saison { color: var(--faience); font-weight: 700; }
+.hors-saison { color: var(--encre-douce); font-style: italic; }
+.fiche-saison { margin: 0 0 1rem; font-size: 0.95rem; line-height: 1.5; }
