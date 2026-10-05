@@ -86,6 +86,19 @@
     return n ? '<span class="placard">' + n + ' au placard</span>' : '';
   };
 
+  // ---------- Vignette d'un plat (lot 15c) ----------
+  // Une assiette dessinée sur un fond pastel ; teinte et garniture tirées de l'identifiant, donc stables pour un même plat
+  var ASSIETTES = [['#E9C46A', '#C97B3C', '#7A9A3A'], ['#EFE3C2', '#7A9A3A', '#F3D98B'], ['#E8A13A', '#F3D98B', '#4E7A2A'],
+    ['#F4D77A', '#4E7A2A', '#FFFFFF'], ['#B23A1E', '#E9C46A', '#6B3A20']];
+  App.vignette = function (r) {
+    var cle = String((r && (r.id || r.titre)) || ''), n = 0;
+    for (var i = 0; i < cle.length; i++) n = (n * 31 + cle.charCodeAt(i)) >>> 0;
+    var a = ASSIETTES[Math.floor(n / 4) % ASSIETTES.length];
+    return '<span class="rec-vignette" data-teinte="' + (n % 4) + '" aria-hidden="true"><svg viewBox="0 0 120 120">' +
+      '<circle cx="60" cy="60" r="50" fill="#FFFFFF"/><circle cx="60" cy="60" r="38" fill="' + a[0] + '"/>' +
+      '<circle cx="50" cy="54" r="10" fill="' + a[1] + '"/><circle cx="70" cy="64" r="8" fill="' + a[2] + '"/></svg></span>';
+  };
+
   // ---------- Goûts du foyer (lot 14b) ----------
   // Nom d'ingrédient -> { aime: [prénoms], aime_pas: [prénoms] }
   App.chargerGouts = async function (sb) {
@@ -190,10 +203,11 @@
       liste.innerHTML = res.length === 0
         ? '<li class="rec-aucune">Aucune recette ne correspond. Retire un filtre ou change ta recherche.</li>'
         : res.map(function (r) {
-          return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '">' +
+          return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '">' + App.vignette(r) +
             '<span class="rec-titre">' + h(r.titre) + '</span>' +
             '<span class="rec-infos"><span>' + dureeTexte(r.temps_prep_min + r.temps_cuisson_min) + '</span>' +
-            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + App.mentionSaison(r, moisCourant()) + App.mentionPlacard(r, etat.placard) + App.mentionGouts(r, etat.gouts) +
+            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + '</span>' +
+            '<span class="rec-tags">' + App.mentionSaison(r, moisCourant()) + App.mentionPlacard(r, etat.placard) + App.mentionGouts(r, etat.gouts) +
             (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') + '</span>' +
             '</button></li>';
         }).join('');

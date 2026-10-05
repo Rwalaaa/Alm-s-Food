@@ -57,7 +57,8 @@
       '<ol class="jours">';
     for (var j = 0; j < 7; j++) {
       var d = plusJours(etat.lundi, j), di = iso(d);
-      html += '<li class="jour' + (di === auj ? ' aujourdhui' : '') + '"><h2>' + JOURS[j] + ' ' + d.getDate() + '</h2>';
+      html += '<li class="jour' + (di === auj ? ' aujourdhui' : '') + '"><div class="jour-tete"><h2>' + JOURS[j] + ' ' + d.getDate() + '</h2>' +
+        (di === auj ? '<span class="pastille-auj">Aujourd\'hui</span>' : '') + '</div>';
       MOMENTS.forEach(function (m) {
         var plats = etat.repas.filter(function (p) { return p.jour === di && p.moment === m[0]; });
         html += '<div class="creneau"><span class="moment">' + m[1] + '</span><div class="plats">' +
@@ -105,7 +106,8 @@
       (aDesRestes ? '<span class="badge">Restes pour demain midi</span>' : '') +
       (p.cuisine_le && !estReste ? '<span class="badge">Cuisiné</span>' : '');
     return '<div class="plat' + (estReste ? ' plat-reste' : '') + '" data-id="' + h(p.id) + '">' +
-      '<span class="plat-titre">' + h(r ? r.titre : 'Recette supprimée') + '</span>' +
+      '<div class="plat-tete">' + (App.vignette ? App.vignette(r || { id: p.id }) : '') +
+        '<span class="plat-titre">' + h(r ? r.titre : 'Recette supprimée') + '</span></div>' +
       (badges ? '<span class="badges">' + badges + '</span>' : '') +
       (lectureSeule ? '<span class="plat-portions">' + p.portions + ' pers.</span>' :
       '<div class="plat-actions">' +
@@ -275,9 +277,10 @@
         .sort(function (a, b) { return a.rec - b.rec || a.pas - b.pas || b.p - a.p || a.n - b.n || b.aime - a.aime || a.k - b.k; }).map(function (x) { return x.r; });
       liste.innerHTML = res.length ? res.map(function (r) {
         var j = etat.recents[r.id];
-        return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '"><span class="rec-titre">' + h(r.titre) + '</span>' +
-          '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span>' +
-          (App.mentionSaison ? App.mentionSaison(r, d.getMonth() + 1) : '') +
+        return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '">' + (App.vignette ? App.vignette(r) : '') +
+          '<span class="rec-titre">' + h(r.titre) + '</span>' +
+          '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span></span>' +
+          '<span class="rec-tags">' + (App.mentionSaison ? App.mentionSaison(r, d.getMonth() + 1) : '') +
           (App.mentionPlacard ? App.mentionPlacard(r, etat.placard) : '') +
           (App.mentionGouts ? App.mentionGouts(r, etat.gouts) : '') +
           (j !== undefined ? '<span class="recent">' + texteRecent(j) + '</span>' : '') + '</span></button></li>';

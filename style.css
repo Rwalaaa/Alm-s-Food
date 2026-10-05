@@ -229,15 +229,56 @@ img { max-width: 100%; }
 }
 .puce[aria-pressed="true"] { background: var(--faience); border-color: var(--faience); color: var(--carte); font-weight: 700; }
 .rec-compte { color: var(--encre-douce); font-size: 0.9rem; margin: 0.75rem 0 0.25rem; min-height: 1.3em; }
-.rec-liste { list-style: none; margin: 0; padding: 0; }
-.rec-liste li + li { border-top: 1px solid var(--trait); }
+/* Lot 15c : tuiles sur deux colonnes (liste Recettes et choix d'un plat) */
+.rec-liste { list-style: none; margin: 0.25rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.rec-liste > li { display: flex; min-width: 0; }
 .rec-item {
-  display: grid; gap: 0.2rem; width: 100%; text-align: left;
-  background: none; border: 0; padding: 0.85rem 0; cursor: pointer;
+  display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; color: inherit;
+  background: var(--carte); border: 0; border-radius: 24px; padding: 10px; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(22, 24, 29, 0.06);
 }
-.rec-titre { font-family: var(--titre); font-size: 1.12rem; line-height: 1.3; }
-.rec-infos { display: flex; flex-wrap: wrap; gap: 0 1rem; color: var(--encre-douce); font-size: 0.9rem; }
-.rec-aucune { padding: 1.5rem 0; color: var(--encre-douce); }
+.rec-vignette {
+  display: flex; align-items: center; justify-content: center; flex: none;
+  height: 112px; border-radius: 18px; overflow: hidden; background: #FFF1C9;
+}
+.rec-vignette[data-teinte="1"] { background: #ECE4FB; }
+.rec-vignette[data-teinte="2"] { background: #DFF3E4; }
+.rec-vignette[data-teinte="3"] { background: #FFE3D3; }
+.rec-vignette svg { width: 92px; height: 92px; }
+.rec-titre { font-weight: 700; font-size: 1rem; line-height: 1.25; padding: 0 4px; overflow-wrap: anywhere; }
+.rec-infos { display: flex; flex-wrap: wrap; gap: 0 8px; color: var(--encre-douce); font-size: 0.85rem; padding: 0 4px; }
+.rec-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 4px 2px; }
+.rec-tags:empty { display: none; }
+.rec-tags > span { font-size: 0.75rem; font-weight: 700; font-style: normal; line-height: 1.4; border-radius: 10px; padding: 2px 8px; }
+.rec-tags .saison { background: #16181D; color: #C6F35E; }
+.rec-tags .placard { background: #DFF3E4; color: #1E5C3A; }
+.rec-tags .gout-pas { background: #FFE3D3; color: #8A2E12; }
+.rec-tags .perso { background: #ECE4FB; color: #4A2F8F; }
+.rec-tags .recent { background: #FFF1C9; color: #6B4E00; }
+.rec-tags .hors-saison:not(.gout-pas) { padding: 2px 0; font-weight: 400; font-style: italic; color: var(--encre-douce); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .rec-vignette { background: #3A3424; }
+  :root:not([data-theme="light"]) .rec-vignette[data-teinte="1"] { background: #2E2A3D; }
+  :root:not([data-theme="light"]) .rec-vignette[data-teinte="2"] { background: #22332A; }
+  :root:not([data-theme="light"]) .rec-vignette[data-teinte="3"] { background: #3B2A24; }
+  :root:not([data-theme="light"]) .rec-item { box-shadow: none; }
+  :root:not([data-theme="light"]) .rec-tags .saison { background: #C6F35E; color: #16181D; }
+  :root:not([data-theme="light"]) .rec-tags .placard { background: #22332A; color: #BFE8CB; }
+  :root:not([data-theme="light"]) .rec-tags .gout-pas { background: #3B2A24; color: #F5C2AE; }
+  :root:not([data-theme="light"]) .rec-tags .perso { background: #2E2A3D; color: #D5C8F7; }
+  :root:not([data-theme="light"]) .rec-tags .recent { background: #3A3424; color: #F2D27A; }
+}
+:root[data-theme="dark"] .rec-vignette { background: #3A3424; }
+:root[data-theme="dark"] .rec-vignette[data-teinte="1"] { background: #2E2A3D; }
+:root[data-theme="dark"] .rec-vignette[data-teinte="2"] { background: #22332A; }
+:root[data-theme="dark"] .rec-vignette[data-teinte="3"] { background: #3B2A24; }
+:root[data-theme="dark"] .rec-item { box-shadow: none; }
+:root[data-theme="dark"] .rec-tags .saison { background: #C6F35E; color: #16181D; }
+:root[data-theme="dark"] .rec-tags .placard { background: #22332A; color: #BFE8CB; }
+:root[data-theme="dark"] .rec-tags .gout-pas { background: #3B2A24; color: #F5C2AE; }
+:root[data-theme="dark"] .rec-tags .perso { background: #2E2A3D; color: #D5C8F7; }
+:root[data-theme="dark"] .rec-tags .recent { background: #3A3424; color: #F2D27A; }
+.rec-aucune { grid-column: 1 / -1; padding: 1.5rem 0; color: var(--encre-douce); }
 
 .retour {
   background: none; border: 0; padding: 0.5rem 0 0.5rem 1.1rem; margin-bottom: 0.25rem;
@@ -279,44 +320,59 @@ img { max-width: 100%; }
 .sem-titre { text-align: center; display: grid; font-weight: 700; }
 .sem-titre small { font-weight: 400; color: var(--encre-douce); font-size: 0.85rem; }
 .bandeau { padding: 0.5rem 0; }
-.jours { list-style: none; margin: 0; padding: 0; }
-.jour { padding: 0.9rem 0 0.6rem; border-bottom: 1px solid var(--trait); }
-.jour h2 { font-size: 1.15rem; margin-bottom: 0.4rem; }
-.jour.aujourdhui h2 { display: inline-block; box-shadow: inset 0 -0.45em 0 color-mix(in srgb, var(--moutarde) 45%, transparent); }
-.creneau { display: grid; grid-template-columns: 3.2rem 1fr; gap: 0.5rem; align-items: start; padding: 0.3rem 0; }
-.moment { color: var(--encre-douce); font-size: 0.85rem; padding-top: 0.55rem; }
-.plats { display: grid; gap: 0.4rem; }
+/* Lot 15d : une carte par jour, plats sur fond gris clair avec vignette */
+.jours { list-style: none; margin: 0.25rem 0 0; padding: 0; display: grid; gap: 14px; }
+.jour { background: var(--carte); border-radius: 24px; padding: 14px; border: 2px solid transparent; box-shadow: 0 1px 4px rgba(22, 24, 29, 0.06); }
+.jour.aujourdhui { border-color: var(--encre); }
+.jour-tete { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; }
+.jour h2 { font-size: 1.2rem; }
+.pastille-auj { font-size: 0.75rem; font-weight: 700; color: #C6F35E; background: #16181D; border-radius: 10px; padding: 3px 9px; }
+.creneau { display: grid; grid-template-columns: 2.8rem 1fr; gap: 0.5rem; align-items: start; padding: 0.3rem 0; }
+.moment { color: var(--encre-douce); font-size: 0.85rem; font-weight: 700; padding-top: 0.9rem; }
+.plats { display: grid; gap: 0.5rem; }
 .plat {
-  background: var(--carte); border: 1.5px solid var(--trait); border-left: 4px solid var(--faience);
-  border-radius: 10px; padding: 0.5rem 0.65rem; display: grid; gap: 0.35rem;
+  background: var(--fond); border: 1.5px solid transparent;
+  border-radius: 16px; padding: 8px 10px; display: grid; gap: 0.45rem;
 }
-.plat-titre { font-weight: 700; line-height: 1.3; }
+.plat-tete { display: flex; align-items: center; gap: 10px; }
+.plat-tete .rec-vignette { width: 48px; height: 48px; border-radius: 14px; }
+.plat-tete .rec-vignette svg { width: 38px; height: 38px; }
+.plat-titre { font-weight: 700; line-height: 1.25; min-width: 0; overflow-wrap: anywhere; }
 .plat-actions { display: flex; align-items: center; gap: 0.4rem; }
 .plat-actions button {
-  min-width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid var(--trait);
-  background: var(--fond); color: var(--encre); font-size: 1.1rem; cursor: pointer;
+  min-width: 36px; height: 36px; border-radius: 18px; border: 0;
+  background: var(--carte); color: var(--encre); font-size: 1.1rem; cursor: pointer;
 }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .jour { box-shadow: none; } }
+:root[data-theme="dark"] .jour { box-shadow: none; }
 .plat-actions button:disabled { opacity: 0.35; }
 .plat-actions .retirer { margin-left: auto; font-size: 0.85rem; padding: 0 0.7rem; color: var(--encre-douce); }
 .plat-portions { font-size: 0.9rem; min-width: 3.6rem; text-align: center; color: var(--encre-douce); }
 .ajouter {
-  justify-self: start; background: none; border: 1.5px dashed var(--trait); border-radius: 10px;
-  color: var(--faience); font-weight: 700; padding: 0.5rem 0.8rem; min-height: 40px; cursor: pointer;
+  justify-self: stretch; background: none; border: 2px dashed var(--trait); border-radius: 16px;
+  color: var(--faience); font-weight: 700; padding: 0.5rem 0.8rem; min-height: 56px; cursor: pointer;
 }
 .vide-creneau { color: var(--encre-douce); font-size: 0.9rem; padding-top: 0.5rem; }
 .choix-titre { font-size: 1.4rem; margin: 0.25rem 0 0.75rem; }
 .choix-recherche { width: 100%; margin-bottom: 0.5rem; }
-.ajouter-autre { border: 0; padding: 0.2rem 0; min-height: 32px; font-size: 0.9rem; font-weight: 400; }
+.ajouter-autre { justify-self: start; border: 0; padding: 0.2rem 0; min-height: 32px; font-size: 0.9rem; font-weight: 700; }
+.ajouter-autre::before { content: '+ '; }
 
 /* Planning : restes, froid, plats récents */
 .badges { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .badge { font-size: 0.78rem; background: var(--faience-clair); color: var(--encre); border-radius: 999px; padding: 0.05rem 0.55rem; }
 .badge-froid { background: color-mix(in srgb, var(--moutarde) 30%, transparent); }
-.plat-reste { border-left-style: dashed; }
+.plat-reste { border-color: var(--trait); border-style: dashed; }
 .plat-restes {
-  justify-self: start; background: none; border: 0; padding: 0.15rem 0;
-  color: var(--faience); font-size: 0.88rem; font-weight: 700; text-decoration: underline; cursor: pointer;
+  justify-self: start; background: none; border: 0; padding: 0.15rem 0; text-align: left;
+  color: var(--encre); font-size: 0.88rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
 }
+.plat-restes[data-action="cuisiner"] {   /* le vrai bouton du plat */
+  justify-self: stretch; text-decoration: none; text-align: center;
+  background: #16181D; color: #C6F35E; border-radius: 22px; min-height: 44px; padding: 0 1rem; font-size: 0.95rem;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .plat-restes[data-action="cuisiner"] { background: #C6F35E; color: #16181D; } }
+:root[data-theme="dark"] .plat-restes[data-action="cuisiner"] { background: #C6F35E; color: #16181D; }
 .choix-froid { display: flex; gap: 0.55rem; align-items: flex-start; font-size: 0.92rem; margin: 0.25rem 0 0.75rem; cursor: pointer; }
 .choix-froid input { width: 1.2rem; height: 1.2rem; margin-top: 0.1rem; accent-color: var(--faience); flex: none; }
 .recent { color: #8A6400; font-weight: 700; }
