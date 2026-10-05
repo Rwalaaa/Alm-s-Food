@@ -27,7 +27,7 @@
 
   var etat = { lundi: null, repas: [], recettes: [], parId: {}, choix: null, texte: '', erreur: '', occupe: false, froid: false, recents: {},
     ingParNom: {}, ouvert: null };
-  var CHAMPS = 'id, jour, moment, recette_id, portions, reste_de, froid, ingredients_retires';
+  var CHAMPS = 'id, jour, moment, recette_id, portions, reste_de, froid, ingredients_retires, cuisine_le';
 
   function lundiCourant() { return lundiDe(App.aujourdhui()); }
   function semainePassee() { return etat.lundi < lundiCourant(); }
@@ -102,7 +102,8 @@
     var aDesRestes = !estReste && etat.repas.some(function (x) { return x.reste_de === p.id; });
     var badges = (estReste ? '<span class="badge">Restes de la veille</span>' : '') +
       (p.froid ? '<span class="badge badge-froid">Froid</span>' : '') +
-      (aDesRestes ? '<span class="badge">Restes pour demain midi</span>' : '');
+      (aDesRestes ? '<span class="badge">Restes pour demain midi</span>' : '') +
+      (p.cuisine_le && !estReste ? '<span class="badge">Cuisiné</span>' : '');
     return '<div class="plat' + (estReste ? ' plat-reste' : '') + '" data-id="' + h(p.id) + '">' +
       '<span class="plat-titre">' + h(r ? r.titre : 'Recette supprimée') + '</span>' +
       (badges ? '<span class="badges">' + badges + '</span>' : '') +
@@ -113,6 +114,7 @@
         '<button type="button" data-action="plus" aria-label="Une portion de plus"' + (p.portions >= 20 ? ' disabled' : '') + '>+</button>' +
         '<button type="button" data-action="retirer" class="retirer" aria-label="Retirer ce plat">Retirer</button>' +
       '</div>' +
+      (r && !estReste && App.ouvrirCuisine ? '<button type="button" data-action="cuisiner" class="plat-restes">Cuisiner pas à pas</button>' : '') +
       (p.moment === 'soir' && !estReste && !aDesRestes
         ? '<button type="button" data-action="restes" class="plat-restes">Garder des restes pour demain midi</button>' : '') +
       (estReste || !r ? '' : panneauIngredients(p, r))) +
@@ -151,8 +153,20 @@
     return r;
   }
 
+  // Mode cuisine depuis un repas : portions prévues, et « Noter le repas comme cuisiné » à la fin
+  function cuisiner(c, ctx, id) {
+    var p = etat.repas.find(function (x) { return x.id === id; });
+    var r = p && etat.parId[p.recette_id];
+    if (!r) return;
+    App.ouvrirCuisine(r, p.portions, { repas: p, sb: ctx.sb, quandCuisine: function (jour) {
+      p.cuisine_le = jour;
+      if (c.isConnected && document.querySelector('.onglet[data-onglet="planning"][aria-current="page"]') && !etat.choix) rendreSemaine(c, ctx);
+    } });
+  }
+
   async function action(c, ctx, id, quoi) {
     if (quoi === 'ingredients') { etat.ouvert = etat.ouvert === id ? null : id; return rendreSemaine(c, ctx); }
+    if (quoi === 'cuisiner') return cuisiner(c, ctx, id);
     if (etat.occupe) return;
     var p = etat.repas.find(function (x) { return x.id === id; });
     if (!p) return;
