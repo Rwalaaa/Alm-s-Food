@@ -210,27 +210,72 @@
   function ecranFin() {
     var repas = et.options.repas;
     var noter = repas && !repas.cuisine_le;
+    var erreur = '<p class="erreur" role="alert"' + (et.erreur ? '' : ' hidden') + '>' + h(et.erreur || '') + '</p>';
+    if (noter && et.bilan && et.bilan.length) return ecranBilan(erreur);
     return '<div class="cui-fin"><h2 class="cui-titre">Bon appétit</h2>' +
       '<p class="discret">' + (repas && repas.cuisine_le ? 'Ce repas est noté comme cuisiné.' : 'Toutes les étapes sont faites.') + '</p>' +
       (noter ? '<button type="button" class="bouton" data-action="noter"' + (et.occupe ? ' disabled' : '') + '>Noter le repas comme cuisiné</button>' : '') +
       '<button type="button" class="bouton' + (noter ? ' secondaire' : '') + '" data-action="quitter">Quitter le mode cuisine</button>' +
-      '<p class="erreur" role="alert"' + (et.erreur ? '' : ' hidden') + '>' + h(et.erreur || '') + '</p></div>';
+      erreur + '</div>';
   }
-  // Repas du planning : on note le jour où il a été cuisiné
+  // Ce qui va changer au placard, avant de valider
+  function qte(v, unite) { return App.quantiteStock ? App.quantiteStock(v, unite) : v + ' ' + unite; }
+  function ecranBilan(erreur) {
+    return '<div class="cui-bilan"><h2 class="cui-titre">Bon appétit</h2>' +
+      '<p class="discret cui-aide">Le placard sera mis à jour :</p><ul>' +
+      et.bilan.map(function (l) {
+        var nom = '<span class="cui-bilan-nom">' + h(l.nom) + '</span> ';
+        if (l.action === 'deduit') return '<li>' + nom + h(qte(l.avant, l.unite_base)) + ' → ' + h(qte(l.apres, l.unite_base)) + '</li>';
+        if (l.action === 'epuise') return '<li>' + nom + h(qte(l.avant, l.unite_base)) + ' → plus rien, retiré du placard</li>';
+        var coche = et.epuises.indexOf(l.ingredient_id) !== -1;
+        return '<li><label><input type="checkbox" data-epuise="' + h(l.ingredient_id) + '"' + (coche ? ' checked' : '') + '>' +
+          '<span>' + nom + 'Il n\'en reste plus<small>Quantité non notée : sans coche, il reste au placard.</small></span></label></li>';
+      }).join('') + '</ul>' +
+      '<div class="cui-bilan-actions">' +
+        '<button type="button" class="bouton secondaire" data-action="annuler-bilan"' + (et.occupe ? ' disabled' : '') + '>Annuler</button>' +
+        '<button type="button" class="bouton" data-action="valider"' + (et.occupe ? ' disabled' : '') + '>Valider</button></div>' +
+      erreur + '</div>';
+  }
+  // Repas du planning : bilan du placard (simulation), puis enregistrement en une seule opération côté base
+  function appeler(ici, simuler) {
+    return ici.options.sb.rpc('noter_repas_cuisine', { p_repas: ici.options.repas.id, p_jour: App.dateISO(App.aujourdhui()),
+      p_portions: ici.portions, p_epuises: simuler ? [] : ici.epuises, p_simuler: simuler });
+  }
+  function erreurNoter(ici, err) {
+    var m = (err && err.message) || '';
+    if (/déjà noté/.test(m)) {   // noté entre-temps sur l'autre téléphone
+      ici.bilan = null;
+      ici.erreur = '';
+      marquer(ici, App.dateISO(App.aujourdhui()));
+      return;
+    }
+    ici.erreur = App.traduireErreur(err);
+  }
+  function marquer(ici, jour) {
+    if (ici.options.quandCuisine) ici.options.quandCuisine(jour);
+    else ici.options.repas.cuisine_le = jour;
+  }
   async function noter() {
     var ici = et, repas = et.options.repas;
     if (!repas || repas.cuisine_le || ici.occupe) return;
     ici.occupe = true; ici.erreur = ''; rendre();
-    var jour = App.dateISO(App.aujourdhui());
-    var r = await ici.options.sb.from('planning').update({ cuisine_le: jour }).eq('id', repas.id);
+    var r = await appeler(ici, true);
     ici.occupe = false;
-    if (r.error) {
-      ici.erreur = App.traduireErreur(r.error);
-      if (et === ici) rendre();
-      return;
-    }
-    if (ici.options.quandCuisine) ici.options.quandCuisine(jour);
-    else repas.cuisine_le = jour;
+    if (r.error) { erreurNoter(ici, r.error); if (et === ici) rendre(); return; }
+    ici.bilan = r.data || [];
+    ici.epuises = [];
+    if (!ici.bilan.length) return enregistrer();   // rien au placard pour ce plat : on note directement
+    if (et === ici) rendre();
+  }
+  async function enregistrer() {
+    var ici = et;
+    if (!ici || ici.occupe || ici.options.repas.cuisine_le) return;
+    ici.occupe = true; ici.erreur = ''; rendre();
+    var r = await appeler(ici, false);
+    ici.occupe = false;
+    if (r.error) { erreurNoter(ici, r.error); if (et === ici) rendre(); return; }
+    ici.bilan = null;
+    marquer(ici, App.dateISO(App.aujourdhui()));
     if (et !== ici) return;
     rendre();
     quitter();
@@ -295,12 +340,18 @@
         '<button type="button" class="bouton secondaire" data-nav="-1">Précédent</button>' +
         '<button type="button" class="bouton" data-nav="1"></button></nav>';
     et = { recette: recette, portions: portions || recette.portions || 1, ecran: 0, minuteurs: {}, alarmes: [], prets: [], el: c,
-      options: options || {}, occupe: false, erreur: '',
+      options: options || {}, occupe: false, erreur: '', bilan: null, epuises: [],
       horloge: setInterval(verifierMinuteurs, 250) };
     if (!Array.isArray(recette.etapes)) recette.etapes = [];
     document.body.appendChild(c);
     document.documentElement.classList.add('cuisine-ouverte');
     c.addEventListener('click', clic);
+    c.addEventListener('change', function (e) {   // « Il n'en reste plus » dans le bilan du placard
+      var k = e.target.dataset && e.target.dataset.epuise;
+      if (!k || !et) return;
+      et.epuises = et.epuises.filter(function (x) { return x !== k; });
+      if (e.target.checked) et.epuises.push(k);
+    });
     try { history.pushState({ cuisine: true, recette: recette.id }, ''); } catch (e) { /* sans historique */ }
     rendre();
     gererEcran();
@@ -337,7 +388,14 @@
     var d = b.dataset;
     if (d.action === 'quitter') return quitter();
     if (d.action === 'noter') return noter();
-    if (d.portions) { et.portions = Math.min(20, Math.max(1, et.portions + Number(d.portions))); return rendre(); }
+    if (d.action === 'valider') return enregistrer();
+    if (d.action === 'annuler-bilan') { et.bilan = null; et.erreur = ''; return rendre(); }
+    if (d.portions) {
+      if (et.occupe) return;
+      et.portions = Math.min(20, Math.max(1, et.portions + Number(d.portions)));
+      et.bilan = null;   // le bilan du placard dépend des portions
+      return rendre();
+    }
     if (d.nav) {
       et.ecran = Math.min(et.recette.etapes.length + 1, Math.max(0, et.ecran + Number(d.nav)));
       rendre(); et.el.querySelector('.cui-corps').scrollTop = 0;

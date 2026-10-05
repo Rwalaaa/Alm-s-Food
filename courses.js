@@ -37,6 +37,7 @@
 
   // ---------- Calcul de la liste ----------
   // Restes (reste_de) exclus : leurs portions sont déjà comptées dans le repas du soir.
+  // Repas déjà cuisinés (cuisine_le) exclus : leurs ingrédients ont été utilisés (et retirés du placard).
   // Ingrédients facultatifs et ingrédients retirés d'un repas exclus.
   // Placard/frigo : quantité inconnue = "on en a" -> exclu ; quantité connue -> déduite.
   App.calculerCourses = function (repas, recettes, ingredients, stock) {
@@ -45,7 +46,7 @@
     ingredients.forEach(function (i) { ingParNom[i.nom] = i; });
     stock.forEach(function (s) { stockParId[s.ingredient_id] = s; });
     repas.forEach(function (p) {
-      if (p.reste_de) return;
+      if (p.reste_de || p.cuisine_le) return;
       var r = recParId[p.recette_id];
       if (!r) return;
       var facteur = p.portions / (r.portions || 1);
@@ -110,7 +111,7 @@
     var fin = plusJours(lundi, 6);
     var res = await Promise.all([
       App.chargerRecettes(sb),
-      sb.from('planning').select('id, jour, recette_id, portions, reste_de, ingredients_retires')
+      sb.from('planning').select('id, jour, recette_id, portions, reste_de, ingredients_retires, cuisine_le')
         .gte('jour', App.dateISO(debut)).lte('jour', App.dateISO(fin)),
       sb.from('ingredients').select('id, nom, rayon, unite_base'),
       sb.from('stock').select('ingredient_id, quantite'),
@@ -122,7 +123,7 @@
     etat.prix = res[5].error ? [] : res[5].data || [];   // sans prix, la liste reste utilisable
     etat.magasins = res[6].error ? [] : res[6].data || [];
     etat.periode = { debut: debut, fin: fin, lundi: App.dateISO(lundi) };
-    etat.nbRepas = res[1].data.filter(function (p) { return !p.reste_de; }).length;
+    etat.nbRepas = res[1].data.filter(function (p) { return !p.reste_de && !p.cuisine_le; }).length;
     etat.liste = App.calculerCourses(res[1].data, res[0], res[2].data, res[3].data);
     etat.articles = res[4].data || [];
   }

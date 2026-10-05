@@ -550,7 +550,7 @@ img { max-width: 100%; }
   padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
 }
 .cuisine > .vichy { height: 10px; flex: none; }
-.cuisine button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.cuisine button, .cuisine label { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .cui-entete { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem 0.4rem; flex: none; }
 .cui-quitter {
   flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; cursor: pointer;
@@ -614,3 +614,12 @@ img { max-width: 100%; }
 .cui-nav .bouton[hidden] { display: none; }
 .cui-nav .bouton:disabled { opacity: 0.35; cursor: default; }
 :root[data-theme="dark"] .cuisine .bouton:not(.secondaire) { color: #121A22; }
+/* Mode cuisine : bilan du placard avant de noter le repas (lot 10c) */
+.cui-bilan { display: grid; gap: 0.6rem; }
+.cui-bilan ul { list-style: none; margin: 0; padding: 0; }
+.cui-bilan li { border-bottom: 1px solid var(--trait); padding: 0.65rem 0; font-size: 1.05rem; line-height: 1.4; }
+.cui-bilan-nom { font-weight: 700; }
+.cui-bilan label { display: flex; gap: 0.7rem; align-items: flex-start; cursor: pointer; }
+.cui-bilan input { width: 1.3rem; height: 1.3rem; margin: 0.1rem 0 0; accent-color: var(--faience); flex: none; }
+.cui-bilan small { display: block; font-size: 0.85rem; color: var(--encre-douce); }
+.cui-bilan-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.6rem; margin-top: 0.4rem; }
