@@ -3,7 +3,7 @@
   var h = App.h;
   var ETIQUETTES = ['Rapide', 'Végé', 'Léger', 'Copieux', 'Gamelle', 'Réconfortant', 'Petit budget', 'Soupe'];
   var etat = { recettes: null, filtres: [], pays: '', texte: '', ouverte: null, form: null, catalogue: null, ctx: null, occupe: false,
-    ciqual: null, ciqualErreur: '' };
+    ciqual: null, ciqualErreur: '', placard: {} };
 
   // Calcul des valeurs nutritives d'une portion (ingrédients facultatifs exclus)
   App.nutritionPortion = function (r) {
@@ -65,6 +65,27 @@
     return '';
   };
 
+  // ---------- Anti-gaspi : ce qu'il y a déjà à la maison ----------
+  // Articles du placard qui ne sont pas « Toujours à la maison » : ce qu'il faut utiliser. Nom -> quantité (ou null).
+  App.chargerPlacard = async function (sb) {
+    var r = await sb.from('stock').select('quantite, permanent, ingredients(nom)');
+    if (r.error) throw r.error;
+    var p = {};
+    (r.data || []).forEach(function (l) { if (!l.permanent && l.ingredients) p[l.ingredients.nom] = l.quantite; });
+    return p;
+  };
+  App.auPlacard = function (r, placard) {
+    var noms = [];
+    (r.recette_ingredients || []).forEach(function (ri) {
+      if (!ri.optionnel && ri.ingredients && Object.prototype.hasOwnProperty.call(placard || {}, ri.ingredients.nom)) noms.push(ri.ingredients.nom);
+    });
+    return noms;
+  };
+  App.mentionPlacard = function (r, placard) {
+    var n = App.auPlacard(r, placard).length;
+    return n ? '<span class="placard">' + n + ' au placard</span>' : '';
+  };
+
   function dureeTexte(min) {
     if (min < 60) return min + ' min';
     var hh = Math.floor(min / 60), mm = min % 60;
@@ -94,14 +115,19 @@
 
   function filtrer() {
     var t = simplifier(etat.texte.trim());
-    return etat.recettes.filter(function (r) {
+    var res = etat.recettes.filter(function (r) {
       if (t && r._cherche.indexOf(t) === -1) return false;
       if (etat.pays && r.pays !== etat.pays) return false;
       return etat.filtres.every(function (f) {
         if (f === 'De saison') return App.saison(r, moisCourant()).deSaison;
+        if (f === 'Avec le placard') return App.auPlacard(r, etat.placard).length > 0;
         return (r.categories || []).indexOf(f) !== -1;
       });
     });
+    if (etat.filtres.indexOf('Avec le placard') === -1) return res;
+    // Filtre anti-gaspi : d'abord les plats qui utilisent le plus de choses du placard
+    return res.map(function (r, k) { return { r: r, k: k, n: App.auPlacard(r, etat.placard).length }; })
+      .sort(function (x, y) { return y.n - x.n || x.k - y.k; }).map(function (x) { return x.r; });
   }
 
   // ---------- Liste ----------
@@ -117,7 +143,7 @@
         '</select>' +
       '</div>' +
       '<div class="puces" role="group" aria-label="Filtres">' +
-        ['De saison'].concat(ETIQUETTES).map(function (e) {
+        ['De saison', 'Avec le placard'].concat(ETIQUETTES).map(function (e) {
           return '<button type="button" class="puce" aria-pressed="' + (etat.filtres.indexOf(e) !== -1) + '">' + h(e) + '</button>';
         }).join('') +
       '</div>' +
@@ -134,7 +160,7 @@
           return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '">' +
             '<span class="rec-titre">' + h(r.titre) + '</span>' +
             '<span class="rec-infos"><span>' + dureeTexte(r.temps_prep_min + r.temps_cuisson_min) + '</span>' +
-            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + App.mentionSaison(r, moisCourant()) +
+            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + App.mentionSaison(r, moisCourant()) + App.mentionPlacard(r, etat.placard) +
             (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') + '</span>' +
             '</button></li>';
         }).join('');
@@ -200,7 +226,8 @@
         '<h3>Ingrédients</h3>' +
         '<ul class="fiche-ingr">' + ingr.map(function (ri) {
           return '<li><span class="q">' + h(ri.libelle_quantite || ri.quantite) + '</span> ' + h(ri.ingredients ? ri.ingredients.nom : '?') +
-            (ri.optionnel ? ' <span class="discret">(facultatif)</span>' : '') + '</li>';
+            (ri.optionnel ? ' <span class="discret">(facultatif)</span>' : '') +
+            (!ri.optionnel && ri.ingredients && Object.prototype.hasOwnProperty.call(etat.placard, ri.ingredients.nom) ? ' <span class="placard">au placard</span>' : '') + '</li>';
         }).join('') + '</ul>' +
         '<h3>Préparation</h3>' +
         '<ol class="fiche-etapes">' + (r.etapes || []).map(function (e) {
@@ -685,6 +712,8 @@
           return;
         }
       }
+      try { etat.placard = await App.chargerPlacard(ctx.sb); }   // relu à chaque fois : le placard change souvent
+      catch (err) { /* pas bloquant : on garde le dernier placard connu */ }
       if (c.isConnected) rendreListe(c);
     }
   };

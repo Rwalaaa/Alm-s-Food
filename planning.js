@@ -264,13 +264,16 @@
         var s = App.saison(r, mois);
         return (recent(r) ? 3 : 0) + (s.hors.length ? 2 : s.deSaison ? 0 : 1);
       };
-      res = res.map(function (r, k) { return { r: r, k: k, n: rang(r) }; })
-        .sort(function (a, b) { return a.n - b.n || a.k - b.k; }).map(function (x) { return x.r; });
+      // Anti-gaspi d'abord : plus il y a d'ingrédients déjà au placard, plus le plat remonte (les récents restent en fin)
+      var placard = function (r) { return App.auPlacard ? App.auPlacard(r, etat.placard).length : 0; };
+      res = res.map(function (r, k) { return { r: r, k: k, n: rang(r), p: recent(r) ? 0 : placard(r), rec: recent(r) ? 1 : 0 }; })
+        .sort(function (a, b) { return a.rec - b.rec || b.p - a.p || a.n - b.n || a.k - b.k; }).map(function (x) { return x.r; });
       liste.innerHTML = res.length ? res.map(function (r) {
         var j = etat.recents[r.id];
         return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '"><span class="rec-titre">' + h(r.titre) + '</span>' +
           '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span>' +
           (App.mentionSaison ? App.mentionSaison(r, d.getMonth() + 1) : '') +
+          (App.mentionPlacard ? App.mentionPlacard(r, etat.placard) : '') +
           (j !== undefined ? '<span class="recent">' + texteRecent(j) + '</span>' : '') + '</span></button></li>';
       }).join('') : '<li class="rec-aucune">Aucune recette ne correspond.</li>';
     }
@@ -298,7 +301,9 @@
       if (c.isConnected) rendreSemaine(c, ctx);
     });
     window.scrollTo(0, 0);
-    chargerRecents(ctx.sb, ch.jour).then(function () { pret = true; if (c.isConnected) maj(); });
+    etat.placard = {};
+    var placard = App.chargerPlacard ? App.chargerPlacard(ctx.sb).then(function (p) { etat.placard = p; }, function () { /* pas bloquant */ }) : null;
+    Promise.all([chargerRecents(ctx.sb, ch.jour), placard]).then(function () { pret = true; if (c.isConnected) maj(); });
   }
 
   // ---------- Chargement ----------

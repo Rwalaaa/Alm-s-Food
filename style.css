@@ -632,3 +632,6 @@ img { max-width: 100%; }
 .saison { color: var(--faience); font-weight: 700; }
 .hors-saison { color: var(--encre-douce); font-style: italic; }
 .fiche-saison { margin: 0 0 1rem; font-size: 0.95rem; line-height: 1.5; }
+/* Anti-gaspi (lot 13b) */
+.placard { color: var(--encre); font-weight: 700; }
+.fiche-ingr .placard { font-size: 0.85rem; color: var(--faience); white-space: nowrap; }
