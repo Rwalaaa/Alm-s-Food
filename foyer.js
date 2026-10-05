@@ -14,6 +14,7 @@ App.onglets.push({
         '<h2>' + h(ctx.foyer.nom) + '</h2>' +
         '<ul class="membres">' + membres + '</ul>' +
       '</section>' +
+      '<section class="bloc" id="bloc-gouts"><h2>Goûts</h2><p class="chargement">Chargement…</p></section>' +
       '<section class="bloc">' +
         '<h2>Code d\'invitation</h2>' +
         '<p>' + (seul
@@ -37,6 +38,7 @@ App.onglets.push({
     });
     c.querySelector('#deconnexion').addEventListener('click', ctx.deconnecter);
     App.magasins(c.querySelector('#bloc-magasins'), ctx);
+    App.gouts(c.querySelector('#bloc-gouts'), ctx);
   }
 });
 
@@ -128,4 +130,108 @@ App.onglets.push({
   }
 
   App.magasins = function (bloc, ctx) { etat.erreur = ''; return charger(bloc, ctx); };
+})();
+
+// Goûts : ce que chacun aime ou n'aime pas (table preferences). Chacun modifie les siens, voit ceux des autres.
+(function () {
+  var h = App.h;
+  var etat = { prefs: [], ingredients: [], texte: '', erreur: '', occupe: false };
+
+  function affiche(bloc) {
+    return bloc.isConnected && !!document.querySelector('.onglet[data-onglet="foyer"][aria-current="page"]');
+  }
+  function nomDe(id) {
+    var i = etat.ingredients.find(function (x) { return x.id === id; });
+    return i ? i.nom : '?';
+  }
+  function triNoms(liste) { return liste.slice().sort(function (a, b) { return a.nom.localeCompare(b.nom, 'fr'); }); }
+  function avisDe(userId, avis) {
+    return triNoms(etat.prefs.filter(function (p) { return p.user_id === userId && p.avis === avis; })
+      .map(function (p) { return { id: p.ingredient_id, nom: nomDe(p.ingredient_id) }; }));
+  }
+  function puces(liste, modifiable, avis) {
+    if (!liste.length) return '<p class="discret gouts-vide">Rien pour l\'instant.</p>';
+    return '<ul class="gouts-puces">' + liste.map(function (x) {
+      return '<li class="gout-' + avis + '">' + h(x.nom) + (modifiable
+        ? '<button type="button" data-retirer="' + h(x.id) + '" aria-label="Retirer ' + h(x.nom) + '">×</button>' : '') + '</li>';
+    }).join('') + '</ul>';
+  }
+  function suggestions(moi) {
+    var t = App.simplifier(etat.texte.trim());
+    if (!t) return '';
+    var res = etat.ingredients.filter(function (i) { return App.simplifier(i.nom).indexOf(t) !== -1; }).slice(0, 6);
+    if (!res.length) return '<p class="discret">Aucun ingrédient de ce nom dans vos recettes.</p>';
+    return '<ul class="gouts-sugg">' + res.map(function (i) {
+      var p = etat.prefs.find(function (x) { return x.user_id === moi && x.ingredient_id === i.id; });
+      return '<li><span>' + h(i.nom) + '</span>' +
+        '<button type="button" class="puce" data-avis="aime_pas" data-ingr="' + h(i.id) + '" aria-pressed="' + (!!p && p.avis === 'aime_pas') + '">Je n\'aime pas</button>' +
+        '<button type="button" class="puce" data-avis="aime" data-ingr="' + h(i.id) + '" aria-pressed="' + (!!p && p.avis === 'aime') + '">J\'aime</button></li>';
+    }).join('') + '</ul>';
+  }
+
+  function rendre(bloc, ctx) {
+    var moi = ctx.moi.user_id;
+    var autres = ctx.membres.filter(function (m) { return m.user_id !== moi; });
+    bloc.innerHTML = '<h2>Goûts</h2>' +
+      '<p>Les plats avec un ingrédient que quelqu\'un n\'aime pas passent en fin de liste quand vous choisissez un repas.</p>' +
+      (etat.erreur ? '<p class="erreur" role="alert">' + h(etat.erreur) + '</p>' : '') +
+      '<h3>Tu n\'aimes pas</h3>' + puces(avisDe(moi, 'aime_pas'), true, 'aime_pas') +
+      '<h3>Tu aimes</h3>' + puces(avisDe(moi, 'aime'), true, 'aime') +
+      '<label class="gouts-ajout">Ajouter un ingrédient<input id="gouts-texte" type="search" autocomplete="off" maxlength="50" placeholder="Ex. : poivron" value="' + h(etat.texte) + '"></label>' +
+      '<div id="gouts-sugg">' + suggestions(moi) + '</div>' +
+      autres.map(function (m) {
+        var pas = avisDe(m.user_id, 'aime_pas'), oui = avisDe(m.user_id, 'aime');
+        return '<div class="gouts-autre"><h3>' + h(m.prenom) + '</h3>' +
+          (!pas.length && !oui.length ? '<p class="discret">' + h(m.prenom) + ' n\'a encore rien indiqué.</p>'
+            : (pas.length ? '<p class="discret">N\'aime pas</p>' + puces(pas, false, 'aime_pas') : '') +
+              (oui.length ? '<p class="discret">Aime</p>' + puces(oui, false, 'aime') : '')) + '</div>';
+      }).join('');
+
+    var champ = bloc.querySelector('#gouts-texte');
+    champ.addEventListener('input', function () {
+      etat.texte = champ.value;
+      bloc.querySelector('#gouts-sugg').innerHTML = suggestions(moi);
+    });
+  }
+
+  // Un seul écouteur par bloc (le contenu du bloc est redessiné à chaque modification)
+  function brancher(bloc, ctx) {
+    var moi = ctx.moi.user_id;
+    bloc.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b || etat.occupe || !bloc.contains(b)) return;
+      if (b.dataset.retirer) return ecrire(bloc, ctx, ctx.sb.from('preferences').delete().eq('user_id', moi).eq('ingredient_id', b.dataset.retirer));
+      if (b.dataset.avis) {
+        var p = etat.prefs.find(function (x) { return x.user_id === moi && x.ingredient_id === b.dataset.ingr; });
+        if (p && p.avis === b.dataset.avis)   // déjà choisi : un second appui retire l'avis
+          return ecrire(bloc, ctx, ctx.sb.from('preferences').delete().eq('user_id', moi).eq('ingredient_id', b.dataset.ingr));
+        return ecrire(bloc, ctx, ctx.sb.from('preferences')
+          .upsert({ user_id: moi, ingredient_id: b.dataset.ingr, avis: b.dataset.avis }, { onConflict: 'user_id,ingredient_id' }));
+      }
+    });
+  }
+
+  async function ecrire(bloc, ctx, requete) {
+    etat.occupe = true;
+    bloc.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+    var r = await requete;
+    etat.occupe = false;
+    etat.erreur = r.error ? App.traduireErreur(r.error) : '';
+    return charger(bloc, ctx);
+  }
+
+  async function charger(bloc, ctx) {
+    var res = await Promise.all([
+      ctx.sb.from('preferences').select('user_id, ingredient_id, avis'),
+      ctx.sb.from('ingredients').select('id, nom').order('nom')
+    ]);
+    if (res[0].error || res[1].error) etat.erreur = App.traduireErreur(res[0].error || res[1].error);
+    else { etat.prefs = res[0].data || []; etat.ingredients = res[1].data || []; }
+    if (!affiche(bloc)) return;
+    var focus = document.activeElement && document.activeElement.id === 'gouts-texte';
+    rendre(bloc, ctx);
+    if (focus) bloc.querySelector('#gouts-texte').focus();
+  }
+
+  App.gouts = function (bloc, ctx) { etat.erreur = ''; etat.texte = ''; brancher(bloc, ctx); return charger(bloc, ctx); };
 })();
