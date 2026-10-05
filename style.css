@@ -507,3 +507,29 @@ img { max-width: 100%; }
 .budget-note:empty { display: none; }
 .rayon-budget { float: right; font-family: var(--texte); font-size: 0.85rem; color: var(--encre-douce); padding-top: 0.2rem; }
 .papier .rayon-budget { display: none; }
+
+/* ---------- Courses : prix payé ---------- */
+.article { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.article.avec-prix { grid-template-columns: auto 1fr auto auto; }
+.article-prix { font-size: 0.9rem; color: var(--faience); font-weight: 700; white-space: nowrap; }
+.paye { margin: 0.2rem 0 0; font-size: 0.9rem; }
+.paye strong { font-family: var(--titre); font-weight: 400; font-size: 1.1rem; }
+.prix-fond { position: fixed; inset: 0; background: rgba(18, 26, 34, 0.45); z-index: 20; }
+.prix-feuille {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: grid; gap: 0.75rem;
+  max-width: 40rem; margin: 0 auto; padding: 1.1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  background: var(--carte); border-radius: 16px 16px 0 0; border-top: 4px solid var(--moutarde);
+  font-family: var(--texte); font-size: 1rem; line-height: 1.5; color: var(--encre);
+}
+.prix-titre { font-family: var(--titre); font-size: 1.3rem; margin: 0; }
+.prix-champ { display: grid; gap: 0.35rem; font-weight: 700; font-size: 0.95rem; }
+.prix-champ input {
+  font-size: 1.4rem; padding: 0.55rem 0.75rem; border: 1.5px solid var(--trait); border-radius: 10px;
+  background: var(--fond); color: var(--encre); width: 100%; max-width: 9rem;
+}
+.prix-effacer { justify-self: center; }
+.papier .article.avec-prix { grid-template-columns: auto 1fr auto; }
+.papier .article-prix {   /* au stylo rouge, par-dessus le trait */
+  position: relative; z-index: 1; font: inherit; font-weight: 700; color: #B03A2E;
+  background: #FBF8EE; padding-left: 0.35rem; transform: rotate(-2deg);
+}

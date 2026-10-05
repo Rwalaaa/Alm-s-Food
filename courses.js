@@ -8,7 +8,8 @@
     ['hygiene_maison', 'Hygiène, maison'], ['autre', 'Autre']];
   var SEMAINES_MAX = 2;   // cette semaine + les 2 suivantes
   var etat = { decalage: 0, liste: null, articles: [], erreur: '', occupe: false, papier: App.lire('papier', false),
-    prix: [], magasins: [], magasin: App.lire('magasin', '') };
+    prix: [], magasins: [], magasin: App.lire('magasin', ''), prixPour: null };
+  var CHAMPS_ART = 'id, ingredient_id, libelle_libre, quantite, coche, prix_paye_eur';
 
   // ---------- Dates ----------
   function lundiCible() {
@@ -91,6 +92,9 @@
     });
     return { couts: couts, total: total, sansPrix: sansPrix, magasin: mag || null };
   };
+  App.eurosCentimes = function (x) {
+    return Number(x).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  };
   App.euros = function (x) {
     if (x > 0 && x < 0.5) return 'moins de 1 €';
     return Math.round(x).toLocaleString('fr-FR') + ' €';
@@ -106,7 +110,7 @@
         .gte('jour', App.dateISO(debut)).lte('jour', App.dateISO(fin)),
       sb.from('ingredients').select('id, nom, rayon, unite_base'),
       sb.from('stock').select('ingredient_id, quantite'),
-      sb.from('liste_articles').select('id, ingredient_id, libelle_libre, quantite, coche').eq('semaine', App.dateISO(lundi)).order('id'),
+      sb.from('liste_articles').select(CHAMPS_ART).eq('semaine', App.dateISO(lundi)).order('id'),
       sb.from('prix').select('ingredient_id, magasin_id, prix_eur, quantite, releve_le'),
       sb.from('magasins').select('id, nom, coefficient').order('nom')
     ]);
@@ -158,6 +162,16 @@
             (E.sansPrix.length ? E.sansPrix.length + (E.sansPrix.length > 1 ? ' articles sans prix' : ' article sans prix') + ' (' + h(E.sansPrix.join(', ')) + '). ' : '') +
             (libres.length ? 'Divers non compté.' : '') + '</p></div>';
       }
+      var payes = etat.articles.filter(function (a) { return a.prix_paye_eur != null; });
+      if (payes.length) {
+        var paye = payes.reduce(function (s, a) { return s + Number(a.prix_paye_eur); }, 0);
+        var comparables = payes.filter(function (a) { return a.ingredient_id && E.couts[a.ingredient_id] != null; });
+        var estime = comparables.reduce(function (s, a) { return s + E.couts[a.ingredient_id]; }, 0);
+        html += '<p class="paye">Payé <strong>' + App.eurosCentimes(paye) + '</strong> pour ' + payes.length + (payes.length > 1 ? ' articles' : ' article') +
+          (comparables.length ? ' (estimé ' + App.euros(estime) + (comparables.length < payes.length ? ' pour ' + comparables.length : '') + ')' : '') + '</p>';
+      } else if (coches) {
+        html += '<p class="paye discret">Appui long sur un article pour noter son prix.</p>';
+      }
       html += '<div class="courses-entete"><p class="courses-compte">' + total + (total > 1 ? ' articles' : ' article') +
         (coches ? ', ' + coches + ' dans le caddie' : '') + '</p>' +
         '<button type="button" class="bascule-papier" aria-pressed="' + etat.papier + '">Mode papier</button></div>' +
@@ -170,11 +184,11 @@
           items.map(function (b) {
             var a = articleDe(b.ingredient.id);
             return ligne('ing:' + b.ingredient.id, b.ingredient.nom, App.quantiteCourses(b.quantite, b.ingredient.unite_base),
-              b.plats.join(', '), a && a.coche, false);
+              b.plats.join(', '), a && a.coche, false, a && a.prix_paye_eur);
           }).join('') + '</ul></section>';
       });
       html += '<section class="rayon"><h2>Divers</h2><ul class="courses-liste">' +
-        libres.map(function (a) { return ligne('lib:' + a.id, a.libelle_libre, '', '', a.coche, true); }).join('') + '</ul>' +
+        libres.map(function (a) { return ligne('lib:' + a.id, a.libelle_libre, '', '', a.coche, true, a.prix_paye_eur); }).join('') + '</ul>' +
         '<div class="courses-ajout"><input type="text" id="libre-texte" maxlength="60" placeholder="Autre chose (essuie-tout, café…)" aria-label="Ajouter un article">' +
         '<button type="button" class="bouton" id="libre-ajouter">Ajouter</button></div></section>';
       html += '</div>';   // fin de la feuille
@@ -183,14 +197,20 @@
           L.aLaMaison.map(function (b) { return '<li>' + h(b.ingredient.nom) + '</li>'; }).join('') + '</ul></details>';
       }
     }
+    if (etat.prixPour) html += feuillePrix(etat.prixPour);
     c.innerHTML = html;
 
     c.querySelectorAll('.sem-fleche').forEach(function (b) {
-      b.addEventListener('click', function () { etat.decalage += Number(b.dataset.sens); etat.erreur = ''; recharger(c, ctx); });
+      b.addEventListener('click', function () { etat.decalage += Number(b.dataset.sens); etat.erreur = ''; etat.prixPour = null; recharger(c, ctx); });
     });
     c.querySelectorAll('.article').forEach(function (b) {
-      b.addEventListener('click', function () { basculer(c, ctx, b.dataset.cle); });
+      b.addEventListener('click', function () {
+        if (b.dataset.appuiLong) { delete b.dataset.appuiLong; return; }   // l'appui long a ouvert la saisie du prix
+        basculer(c, ctx, b.dataset.cle);
+      });
+      appuiLong(b, function () { b.dataset.appuiLong = '1'; ouvrirPrix(c, ctx, b.dataset.cle); });
     });
+    brancherPrix(c, ctx);
     var sm = c.querySelector('#budget-magasin');
     if (sm) sm.addEventListener('change', function () { etat.magasin = sm.value; App.ecrire('magasin', sm.value); rendre(c, ctx); });
     var bp = c.querySelector('.bascule-papier');
@@ -212,15 +232,125 @@
     }
   }
 
-  function ligne(cle, nom, qte, plats, coche, libre) {
+  function ligne(cle, nom, qte, plats, coche, libre, paye) {
+    var avecPrix = paye != null;
     return '<li class="' + (coche ? 'coche' : '') + '">' +
-      '<button type="button" class="article" data-cle="' + h(cle) + '" aria-pressed="' + !!coche + '">' +
+      '<button type="button" class="article' + (avecPrix ? ' avec-prix' : '') + '" data-cle="' + h(cle) + '" aria-pressed="' + !!coche + '">' +
         '<span class="case-courses" aria-hidden="true"></span>' +
         '<span class="article-nom">' + h(nom) + (plats ? '<small>' + h(plats) + '</small>' : '') + '</span>' +
-        (qte ? '<span class="article-qte">' + h(qte) + '</span>' : '') +
+        (qte || avecPrix ? '<span class="article-qte">' + h(qte) + '</span>' : '') +
+        (avecPrix ? '<span class="article-prix">' + App.eurosCentimes(paye) + '</span>' : '') +
       '</button>' +
       (libre ? '<button type="button" class="form-suppr" data-retirer="' + h(cle.slice(4)) + '" aria-label="Retirer ' + h(nom) + '">Retirer</button>' : '') +
     '</li>';
+  }
+
+  // ---------- Prix payé (appui long sur un article) ----------
+  function appuiLong(el, action) {
+    var minuteur = null, x = 0, y = 0;
+    var annuler = function () { clearTimeout(minuteur); minuteur = null; };
+    el.addEventListener('pointerdown', function (e) {
+      x = e.clientX; y = e.clientY; annuler();
+      minuteur = setTimeout(function () { minuteur = null; action(); }, 550);
+    });
+    el.addEventListener('pointermove', function (e) { if (Math.abs(e.clientX - x) > 10 || Math.abs(e.clientY - y) > 10) annuler(); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (t) { el.addEventListener(t, annuler); });
+    el.addEventListener('contextmenu', function (e) { e.preventDefault(); if (minuteur) { annuler(); action(); } else if (!el.dataset.appuiLong) action(); });
+  }
+
+  function infosArticle(cle) {
+    var libre = cle.indexOf('lib:') === 0, id = cle.slice(4);
+    var a = libre ? etat.articles.find(function (x) { return String(x.id) === id; }) : articleDe(id);
+    var b = libre ? null : etat.liste.aAcheter.find(function (x) { return x.ingredient.id === id; });
+    return { libre: libre, id: id, article: a, nom: libre ? (a && a.libelle_libre) : (b && b.ingredient.nom),
+      qte: b ? App.quantiteCourses(b.quantite, b.ingredient.unite_base) : '' };
+  }
+
+  function feuillePrix(cle) {
+    var I = infosArticle(cle), p = I.article && I.article.prix_paye_eur;
+    var mag = etat.magasins.find(function (m) { return m.id === etat.magasin; });
+    return '<div class="prix-fond" id="prix-fond"></div>' +
+      '<div class="prix-feuille" role="dialog" aria-modal="true" aria-labelledby="prix-titre">' +
+        '<p class="prix-titre" id="prix-titre">' + h(I.nom || '') + (I.qte ? ' <span class="discret">' + h(I.qte) + '</span>' : '') + '</p>' +
+        '<label class="prix-champ"><span>Prix payé' + (mag ? ' chez ' + h(mag.nom) : '') + '</span>' +
+          '<span class="champ-unite"><input id="prix-valeur" type="text" inputmode="decimal" autocomplete="off" maxlength="8" placeholder="0,00" value="' +
+          (p != null ? h(String(Number(p)).replace('.', ',')) : '') + '"><span>€</span></span></label>' +
+        '<p class="erreur" role="alert" id="prix-erreur" hidden></p>' +
+        '<div class="editeur-boutons"><button type="button" class="bouton secondaire" id="prix-annuler">Annuler</button>' +
+          '<button type="button" class="bouton" id="prix-enregistrer">Enregistrer</button></div>' +
+        (p != null ? '<button type="button" class="form-suppr prix-effacer" id="prix-effacer">Effacer le prix</button>' : '') +
+      '</div>';
+  }
+
+  function ouvrirPrix(c, ctx, cle) {
+    if (etat.occupe) return;
+    var I = infosArticle(cle);
+    if (!I.nom) return;
+    etat.prixPour = cle;
+    rendre(c, ctx);
+    var champ = c.querySelector('#prix-valeur');
+    if (champ) { champ.focus(); try { champ.select(); } catch (e) { /* */ } }
+  }
+
+  function brancherPrix(c, ctx) {
+    if (!etat.prixPour) return;
+    var fermer = function () { etat.prixPour = null; rendre(c, ctx); };
+    c.querySelector('#prix-annuler').addEventListener('click', fermer);
+    c.querySelector('#prix-fond').addEventListener('click', fermer);
+    c.querySelector('#prix-enregistrer').addEventListener('click', function () { enregistrerPrix(c, ctx, c.querySelector('#prix-valeur').value); });
+    c.querySelector('#prix-valeur').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') enregistrerPrix(c, ctx, e.target.value);
+      if (e.key === 'Escape') fermer();
+    });
+    var ef = c.querySelector('#prix-effacer');
+    if (ef) ef.addEventListener('click', function () { enregistrerPrix(c, ctx, null); });
+  }
+
+  App.lirePrix = function (texte) {   // "2,35" ou "2.35 €" -> 2.35 ; null si invalide
+    var t = String(texte == null ? '' : texte).replace(/€/g, '').replace(/\s/g, '').replace(',', '.');
+    if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
+    var n = Number(t);
+    return n <= 9999 ? n : null;
+  };
+
+  async function enregistrerPrix(c, ctx, texte) {
+    if (etat.occupe || !etat.prixPour) return;
+    var I = infosArticle(etat.prixPour), valeur = null;
+    if (texte !== null) {
+      valeur = App.lirePrix(texte);
+      if (valeur === null) {
+        var pe = c.querySelector('#prix-erreur');
+        pe.textContent = 'Prix invalide : écris par exemple 2,35.'; pe.hidden = false;
+        return;
+      }
+    }
+    var champs = { prix_paye_eur: valeur, magasin_id: valeur === null ? null : (etat.magasin || null) };
+    if (valeur !== null && !(I.article && I.article.coche)) {   // payé = dans le caddie
+      champs.coche = true; champs.coche_par = ctx.moi.user_id; champs.coche_le = new Date().toISOString();
+    }
+    etat.occupe = true;
+    var r;
+    if (I.article) {
+      r = await ctx.sb.from('liste_articles').update(champs).eq('id', I.article.id);
+      if (!r.error) Object.assign(I.article, champs);
+    } else {
+      r = await ctx.sb.from('liste_articles').insert(Object.assign({ semaine: etat.periode.lundi, ingredient_id: I.id }, champs))
+        .select(CHAMPS_ART).single();
+      if (!r.error) etat.articles.push(r.data);
+    }
+    etat.occupe = false;
+    if (r.error && /duplicate key/.test(r.error.message || '')) {   // l'autre téléphone l'a coché entre-temps
+      etat.prixPour = null;
+      return recharger(c, ctx).then(function () { if (afficheeMaintenant()) ouvrirPrix(c, ctx, 'ing:' + I.id); });
+    }
+    if (r.error) {
+      if (!afficheeMaintenant()) return;
+      var p = c.querySelector('#prix-erreur'); p.textContent = App.traduireErreur(r.error); p.hidden = false;
+      return;
+    }
+    etat.prixPour = null;
+    etat.erreur = '';
+    if (afficheeMaintenant()) rendre(c, ctx);
   }
 
   // ---------- Actions ----------
@@ -237,7 +367,7 @@
       if (!r.error) a.coche = nouveau;
     } else {
       r = await sb.from('liste_articles').insert(Object.assign({ semaine: etat.periode.lundi, ingredient_id: id }, champs))
-        .select('id, ingredient_id, libelle_libre, quantite, coche').single();
+        .select(CHAMPS_ART).single();
       if (!r.error) etat.articles.push(r.data);
       else if (/duplicate key/.test(r.error.message || '')) {   // l'autre téléphone l'a créé entre-temps
         etat.occupe = false;
@@ -254,7 +384,7 @@
     if (!texte || etat.occupe) return;
     etat.occupe = true;
     var r = await ctx.sb.from('liste_articles').insert({ semaine: etat.periode.lundi, libelle_libre: texte })
-      .select('id, ingredient_id, libelle_libre, quantite, coche').single();
+      .select(CHAMPS_ART).single();
     etat.occupe = false;
     if (!r.error) etat.articles.push(r.data);
     etat.erreur = r.error ? App.traduireErreur(r.error) : '';
@@ -314,8 +444,8 @@
   }
   async function actualiserArticles() {
     if (!afficheeMaintenant() || !etat.periode) return;
-    if (etat.occupe) return planifierActualisation();
-    var r = await contexte.sb.from('liste_articles').select('id, ingredient_id, libelle_libre, quantite, coche')
+    if (etat.occupe || etat.prixPour) return planifierActualisation();   // pas pendant une saisie de prix
+    var r = await contexte.sb.from('liste_articles').select(CHAMPS_ART)
       .eq('semaine', etat.periode.lundi).order('id');
     if (r.error || !afficheeMaintenant()) return;
     etat.articles = r.data || [];
@@ -349,6 +479,7 @@
     icone: '<path d="M3 4h2l2.5 11h10L20 8H6.5"/><circle cx="9" cy="19" r="1.5"/><circle cx="17" cy="19" r="1.5"/>',
     rendre: function (c, ctx) {
       etat.erreur = '';
+      etat.prixPour = null;
       ecouter(ctx, c);
       return recharger(c, ctx).then(gererEcran);
     }
