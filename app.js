@@ -124,7 +124,7 @@
     if (!App.onglets.some(function (o) { return o.id === etat.onglet; })) etat.onglet = App.onglets[0].id;
     racine.innerHTML =
       '<div class="appli">' +
-        '<header class="entete"><div class="vichy" aria-hidden="true"></div><h1 id="titre-onglet"></h1></header>' +
+        '<header class="entete"><div class="entete-int"><p class="salut" id="salut"></p><h1 id="titre-onglet"></h1></div></header>' +
         '<main id="contenu" class="contenu"></main>' +
         '<nav class="barre" aria-label="Onglets">' +
           App.onglets.map(function (o) {
@@ -139,12 +139,20 @@
     ouvrir(etat.onglet);
   }
 
+  // « Bonjour Xixi » de 5 h à 18 h, « Bonsoir Xixi » sinon (lot 15b)
+  function salutation() {
+    var heure = (App.aujourdhui ? App.aujourdhui() : new Date()).getHours();
+    var mot = heure >= 5 && heure < 18 ? 'Bonjour' : 'Bonsoir';
+    return etat.moi && etat.moi.prenom ? mot + ' ' + etat.moi.prenom : mot;
+  }
+
   function ouvrir(id) {
     var o = App.onglets.find(function (x) { return x.id === id; });
     if (!o) return;
     etat.onglet = id;
     App.ecrire('onglet', id);
     racine.querySelector('#titre-onglet').textContent = o.titre;
+    racine.querySelector('#salut').textContent = salutation();
     racine.querySelectorAll('.onglet').forEach(function (b) {
       if (b.dataset.onglet === id) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');

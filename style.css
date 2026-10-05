@@ -14,7 +14,7 @@
   --vichy: rgba(198, 243, 94, 0.7);
   --titre: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif;
   --texte: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --barre-h: 64px;
+  --barre-h: 68px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -122,59 +122,63 @@ img { max-width: 100%; }
 
 /* ---------- Appli ---------- */
 .appli { min-height: 100%; }
+/* En-tête (lot 15b) : salutation + grand titre, sans vichy */
 .entete {
   position: sticky;
   top: 0;
   z-index: 2;
   background: var(--fond);
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
 }
-.entete .vichy { height: 10px; }
-.entete h1 {
-  font-size: 1.9rem;
-  padding: 0.9rem 1.25rem 0.6rem;
-  max-width: 40rem;
-  margin: 0 auto;
-}
+.entete-int { max-width: 40rem; margin: 0 auto; padding: 0 1.25rem 0.6rem; }
+.salut { margin: 0; font-size: 0.9rem; color: var(--encre-douce); }
+.salut:empty { display: none; }
+.entete h1 { font-size: 1.9rem; }
 .contenu {
   max-width: 40rem;
   margin: 0 auto;
-  padding: 0.5rem 1.25rem calc(var(--barre-h) + 1.5rem + env(safe-area-inset-bottom, 0px));
+  padding: 0.5rem 1.25rem calc(var(--barre-h) + 16px + 1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Barre d'onglets flottante (lot 15b) : pilule noire, onglet actif en pastille citron */
 .barre {
   position: fixed;
-  left: 0; right: 0; bottom: 0;
   z-index: 3;
+  left: 16px; right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  max-width: 26rem;
+  margin: 0 auto;
+  height: var(--barre-h);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  background: var(--carte);
-  border-top: 1px solid var(--trait);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  align-items: center;
+  justify-items: center;
+  background: #16181D;
+  border-radius: calc(var(--barre-h) / 2);
+  box-shadow: 0 6px 20px rgba(22, 24, 29, 0.18);
 }
 .onglet {
   appearance: none;
   background: none;
   border: 0;
-  height: var(--barre-h);
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
   display: grid;
-  justify-items: center;
-  align-content: center;
-  gap: 2px;
-  color: var(--encre-douce);
-  font-size: 0.75rem;
+  place-items: center;
+  color: #9AA0AB;
   cursor: pointer;
   position: relative;
 }
-.onglet[aria-current="page"] { color: var(--faience); font-weight: 700; }
-.onglet[aria-current="page"]::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 30%; right: 30%;
-  height: 3px;
-  border-radius: 0 0 3px 3px;
-  background: var(--faience);
+.onglet span {   /* nom de l'onglet : lu par le lecteur d'écran, pas affiché */
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
+.onglet[aria-current="page"] { background: var(--citron); color: #16181D; }
+.onglet:focus-visible { outline: 3px solid var(--citron); outline-offset: 2px; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .barre { background: #23262D; border: 1px solid var(--trait); box-shadow: none; }
+}
+:root[data-theme="dark"] .barre { background: #23262D; border: 1px solid var(--trait); box-shadow: none; }
 
 /* ---------- Contenus communs ---------- */
 .vide { padding: 2.5rem 0.25rem; max-width: 30rem; }
