@@ -1,38 +1,40 @@
 /* ---------- Couleurs (clair / sombre) ---------- */
 :root {
-  --encre: #1F2D3D;
-  --encre-douce: #5A6B7C;
-  --faience: #2F5D8A;
-  --faience-clair: #DCE6F0;
-  --moutarde: #D9A21B;
-  --fond: #F7F9FB;
+  /* Lot 15a : direction E (noir, gris doux, vert citron). Les anciens noms sont gardés pour ne rien casser ailleurs. */
+  --encre: #16181D;
+  --encre-douce: #555B66;
+  --faience: #16181D;          /* accent principal : noir en clair, citron en sombre */
+  --faience-clair: #EEF0F3;
+  --moutarde: #C6F35E;         /* accent décoratif : vert citron */
+  --citron: #C6F35E;           /* texte des boutons pleins en mode clair */
+  --fond: #F6F7F9;
   --carte: #FFFFFF;
-  --trait: #D5DEE7;
+  --trait: #E3E5EA;
   --erreur: #B3261E;
-  --vichy: rgba(47, 93, 138, 0.42);
-  --titre: 'Young Serif', Georgia, 'Times New Roman', serif;
-  --texte: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --vichy: rgba(198, 243, 94, 0.7);
+  --titre: 'Fredoka', 'Trebuchet MS', system-ui, sans-serif;
+  --texte: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --barre-h: 64px;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --encre: #E6EDF3;
-    --encre-douce: #9AAAB9;
-    --faience: #8DB4DA;
-    --faience-clair: #22303D;
-    --moutarde: #E8B940;
-    --fond: #121A22;
-    --carte: #1A242E;
-    --trait: #2C3A47;
+    --encre: #F2F3F5;
+    --encre-douce: #A3A9B4;
+    --faience: #C6F35E;
+    --faience-clair: #262A31;
+    --moutarde: #C6F35E;
+    --fond: #101216;
+    --carte: #1B1E24;
+    --trait: #2E323A;
     --erreur: #F2B8B5;
-    --vichy: rgba(141, 180, 218, 0.30);
+    --vichy: rgba(198, 243, 94, 0.22);
   }
 }
 :root[data-theme="dark"] {
-  --encre: #E6EDF3; --encre-douce: #9AAAB9; --faience: #8DB4DA; --faience-clair: #22303D;
-  --moutarde: #E8B940; --fond: #121A22; --carte: #1A242E; --trait: #2C3A47;
-  --erreur: #F2B8B5; --vichy: rgba(141, 180, 218, 0.30);
+  --encre: #F2F3F5; --encre-douce: #A3A9B4; --faience: #C6F35E; --faience-clair: #262A31;
+  --moutarde: #C6F35E; --fond: #101216; --carte: #1B1E24; --trait: #2E323A;
+  --erreur: #F2B8B5; --vichy: rgba(198, 243, 94, 0.22);
 }
 
 /* ---------- Base ---------- */
@@ -46,9 +48,9 @@ body {
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
 }
-h1, h2 { font-family: var(--titre); font-weight: 400; line-height: 1.2; margin: 0; }
+h1, h2 { font-family: var(--titre); font-weight: 600; line-height: 1.2; margin: 0; }
 button, input { font: inherit; color: inherit; }
-:focus-visible { outline: 3px solid var(--moutarde); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--faience); outline-offset: 2px; }
 img { max-width: 100%; }
 .chargement { padding: 3rem 1.5rem; text-align: center; color: var(--encre-douce); }
 .discret { color: var(--encre-douce); }
@@ -93,7 +95,7 @@ img { max-width: 100%; }
   border: 0;
   border-radius: 10px;
   background: var(--faience);
-  color: #fff;
+  color: var(--citron);
   font-weight: 700;
   padding: 0.85rem 1.2rem;
   min-height: 48px;
@@ -171,7 +173,7 @@ img { max-width: 100%; }
   top: 0; left: 30%; right: 30%;
   height: 3px;
   border-radius: 0 0 3px 3px;
-  background: var(--moutarde);
+  background: var(--faience);
 }
 
 /* ---------- Contenus communs ---------- */
@@ -596,7 +598,7 @@ img { max-width: 100%; }
   position: absolute; top: 0; width: 210px; height: 210px; margin: 0; display: grid; place-items: center;
   font-family: var(--titre); font-size: 3rem; font-variant-numeric: tabular-nums; color: var(--encre);
 }
-.cui-minuteur[data-etat="fini"] .cui-temps { font-size: 1.7rem; color: var(--moutarde); }
+.cui-minuteur[data-etat="fini"] .cui-temps { font-size: 1.7rem; color: var(--faience); }
 .cui-minuteur[data-etat="pause"] .cui-temps { color: var(--encre-douce); }
 .cui-boutons-min { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
 .cui-fin { text-align: center; padding-top: 2rem; display: grid; gap: 1rem; justify-items: center; }
