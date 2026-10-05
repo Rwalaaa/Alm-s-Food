@@ -540,3 +540,77 @@ img { max-width: 100%; }
 }
 .prix-qte input { width: 6rem; }
 .prix-champ small { font-weight: 400; font-size: 0.82rem; }
+
+/* ---------- Mode cuisine (lot 10a) ---------- */
+.fiche-cuisiner { width: 100%; margin: 1.1rem 0 0.2rem; font-size: 1.05rem; }
+.cuisine-ouverte, .cuisine-ouverte body { overflow: hidden; }
+.cuisine {
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+  background: var(--fond); color: var(--encre);
+  padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+}
+.cuisine > .vichy { height: 10px; flex: none; }
+.cuisine button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.cui-entete { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem 0.4rem; flex: none; }
+.cui-quitter {
+  flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+  display: grid; place-items: center; color: var(--encre);
+}
+.cui-quitter svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.cui-recette { flex: 1; min-width: 0; margin: 0; font-family: var(--titre); font-size: 1.05rem; line-height: 1.2;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.cui-portions { flex: none; display: flex; align-items: center; border: 1.5px solid var(--faience); border-radius: 10px; }
+.cui-portions button {
+  width: 40px; height: 40px; border: 0; background: transparent; color: var(--faience);
+  font: inherit; font-size: 1.35rem; font-weight: 700; cursor: pointer;
+}
+.cui-portions button:disabled { opacity: 0.35; cursor: default; }
+.cui-portions output { min-width: 2.6rem; text-align: center; font-weight: 700; }
+.cui-portions output::after { content: " pers."; font-weight: 400; font-size: 0.8rem; color: var(--encre-douce); }
+.cui-barre { height: 4px; background: var(--trait); flex: none; }
+.cui-avance { height: 100%; background: var(--moutarde); transition: width 0.25s ease; }
+@media (prefers-reduced-motion: reduce) { .cui-avance { transition: none; } }
+.cui-corps { flex: 1; overflow-y: auto; padding: 1.25rem 1.25rem 1rem; max-width: 40rem; width: 100%; margin: 0 auto; box-sizing: border-box; }
+.cui-titre { font-size: 1.7rem; margin-bottom: 0.25rem; }
+.cui-aide { margin: 0 0 0.9rem; font-size: 0.92rem; }
+.cui-ingr { list-style: none; margin: 0; padding: 0; }
+.cui-ingr-item {
+  width: 100%; text-align: left; font: inherit; font-size: 1.1rem; color: var(--encre); cursor: pointer;
+  background: none; border: 0; border-bottom: 1px solid var(--trait); padding: 0.75rem 0 0.75rem 2.1rem; position: relative;
+}
+.cui-ingr-item::before {
+  content: ""; position: absolute; left: 0; top: 0.85rem; width: 1.2rem; height: 1.2rem;
+  border: 2px solid var(--faience); border-radius: 6px; box-sizing: border-box;
+}
+.cui-ingr-item[aria-pressed="true"] { color: var(--encre-douce); text-decoration: line-through; text-decoration-color: var(--moutarde); }
+.cui-ingr-item[aria-pressed="true"]::before { background: var(--faience); box-shadow: inset 0 0 0 3px var(--fond); }
+.cui-ingr-item .q { font-weight: 700; }
+.cui-numero { margin: 0 0 0.6rem; color: var(--faience); font-weight: 700; }
+.cui-texte { margin: 0; font-size: 1.45rem; line-height: 1.45; }
+.cui-minuteur { display: grid; justify-items: center; margin-top: 1.6rem; position: relative; }
+.cui-cadran { width: 210px; height: 210px; }
+.cui-piste { fill: none; stroke: var(--faience-clair); stroke-width: 7; }
+.cui-arc { fill: none; stroke: var(--faience); stroke-width: 7; stroke-linecap: round; }
+.cui-minuteur[data-etat="fini"] .cui-arc, .cui-minuteur[data-etat="fini"] .cui-piste { stroke: var(--moutarde); }
+.cui-temps {
+  position: absolute; top: 0; width: 210px; height: 210px; margin: 0; display: grid; place-items: center;
+  font-family: var(--titre); font-size: 3rem; font-variant-numeric: tabular-nums; color: var(--encre);
+}
+.cui-minuteur[data-etat="fini"] .cui-temps { font-size: 1.7rem; color: var(--moutarde); }
+.cui-minuteur[data-etat="pause"] .cui-temps { color: var(--encre-douce); }
+.cui-boutons-min { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+.cui-fin { text-align: center; padding-top: 2rem; display: grid; gap: 1rem; justify-items: center; }
+.cui-fin .cui-titre { font-size: 2.2rem; }
+.cui-autres { display: flex; flex-wrap: wrap; gap: 0.4rem; padding: 0.6rem 1.25rem 0; flex: none; max-width: 40rem; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.cui-autres:empty { display: none; }
+.cui-puce {
+  font: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; border-radius: 999px; padding: 0.4rem 0.8rem;
+  border: 1.5px solid var(--faience); background: var(--faience-clair); color: var(--faience); font-variant-numeric: tabular-nums;
+}
+.cui-puce[data-etat="fini"] { border-color: var(--moutarde); background: var(--moutarde); color: #1F2D3D; }
+.cui-nav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.6rem; padding: 0.75rem 1.25rem 1rem; flex: none;
+  max-width: 40rem; margin: 0 auto; width: 100%; box-sizing: border-box; }
+.cui-nav .bouton { padding-left: 0.6rem; padding-right: 0.6rem; }
+.cui-nav .bouton[hidden] { display: none; }
+.cui-nav .bouton:disabled { opacity: 0.35; cursor: default; }
+:root[data-theme="dark"] .cuisine .bouton:not(.secondaire) { color: #121A22; }

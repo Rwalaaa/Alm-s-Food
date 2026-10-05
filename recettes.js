@@ -138,6 +138,7 @@
           '<div><dt>Cuisson</dt><dd>' + dureeTexte(r.temps_cuisson_min) + '</dd></div>' +
           '<div><dt>Portions</dt><dd>' + r.portions + '</dd></div>' +
         '</dl>' +
+        (App.ouvrirCuisine ? '<button type="button" class="bouton fiche-cuisiner" id="fiche-cuisiner">Cuisiner pas à pas</button>' : '') +
         '<h3>Par portion</h3>' +
         '<dl class="fiche-nutri">' +
           '<div><dt>Énergie</dt><dd>' + n.kcal + ' kcal</dd></div>' +
@@ -165,6 +166,8 @@
     });
     c.querySelector('#fiche-modifier').addEventListener('click', function () { ouvrirFormulaire(c, r); });
     c.querySelector('#fiche-supprimer').addEventListener('click', function () { supprimer(c, r); });
+    var cuire = c.querySelector('#fiche-cuisiner');
+    if (cuire) cuire.addEventListener('click', function () { App.ouvrirCuisine(r); });
     window.scrollTo(0, 0);
   }
 
@@ -523,7 +526,7 @@
   window.addEventListener('popstate', function () {
     if (!conteneurActif || !document.querySelector('.onglet[data-onglet="recettes"][aria-current="page"]')) return;
     if (etat.form) fermerFormulaire(conteneurActif);
-    else if (etat.ouverte) fermerFiche(conteneurActif);
+    else if (etat.ouverte && !(history.state && history.state.recette === etat.ouverte)) fermerFiche(conteneurActif);   // sortie du mode cuisine : la fiche reste
   });
 
   var onglet = {
