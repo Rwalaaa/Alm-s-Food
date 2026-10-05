@@ -93,7 +93,7 @@ img { max-width: 100%; }
 .bouton {
   appearance: none;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--faience);
   color: var(--citron);
   font-weight: 700;
@@ -186,12 +186,29 @@ img { max-width: 100%; }
 .vide p { margin: 0; color: var(--encre-douce); }
 .vide .vide-titre { color: var(--encre); }
 
-.bloc { padding: 1.25rem 0; border-bottom: 1px solid var(--trait); }
-.bloc:last-child { border-bottom: 0; }
-.bloc h2 { font-size: 1.25rem; margin-bottom: 0.5rem; }
+/* Lot 15f : Foyer en cartes */
+.bloc { background: var(--carte); border-radius: 24px; padding: 16px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(22, 24, 29, 0.06); }
+.bloc h2 { font-size: 1.2rem; margin-bottom: 0.5rem; }
 .bloc p { margin: 0 0 0.75rem; }
-.membres { list-style: none; padding: 0; margin: 0; }
-.membres li { padding: 0.25rem 0; }
+.membres { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.membres li { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.avatar {
+  width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: #C6F35E; color: #16181D; font-family: var(--titre); font-weight: 600; font-size: 1.2rem;
+}
+.membres li:nth-child(2) .avatar { background: #FFE3D3; color: #8A2E12; }
+.membres li:nth-child(3) .avatar { background: #ECE4FB; color: #4A2F8F; }
+.membres li:nth-child(4) .avatar { background: #FFF1C9; color: #6B4E00; }
+.bloc:has(.code) { background: #16181D; color: #F2F3F5; }
+.bloc:has(.code) p, .bloc:has(.code) .discret { color: #B8BDC7; }
+.bloc:has(.code) .code { color: #C6F35E; }
+.bloc:has(.code) .bouton { background: #C6F35E; color: #16181D; border-color: #C6F35E; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .bloc { box-shadow: none; }
+  :root:not([data-theme="light"]) .bloc:has(.code) { background: #23262D; }
+}
+:root[data-theme="dark"] .bloc { box-shadow: none; }
+:root[data-theme="dark"] .bloc:has(.code) { background: #23262D; }
 .code {
   font-family: var(--titre);
   font-size: 2rem;
@@ -210,7 +227,7 @@ img { max-width: 100%; }
   font-size: 1rem;
   padding: 0.65rem 0.75rem;
   border: 1.5px solid var(--trait);
-  border-radius: 10px;
+  border-radius: 24px;
   background: var(--carte);
   min-width: 0;
 }
@@ -455,21 +472,25 @@ img { max-width: 100%; }
 /* Fiche : modifier / supprimer */
 .fiche-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin: 2rem 0 0.5rem; }
 .bouton-danger {
-  appearance: none; border: 1.5px solid var(--erreur); border-radius: 10px; background: transparent;
+  appearance: none; border: 1.5px solid var(--erreur); border-radius: 999px; background: transparent;
   color: var(--erreur); font-weight: 700; min-height: 48px; cursor: pointer;
 }
 
 /* ---------- Onglet Courses ---------- */
 .courses-compte { color: var(--encre-douce); font-size: 0.9rem; margin: 0.5rem 0 0; }
-.rayon { padding-top: 0.9rem; }
-.rayon h2 { font-size: 1.1rem; margin-bottom: 0.25rem; color: var(--faience); }
+/* Lot 15f : rayons en cartes blanches (Courses hors mode papier, Placard) */
+.rayon { background: var(--carte); border-radius: 24px; padding: 12px 16px 4px; margin-top: 14px; box-shadow: 0 1px 4px rgba(22, 24, 29, 0.06); }
+.rayon h2 { font-size: 1.1rem; margin-bottom: 0.15rem; color: var(--encre); }
+.rayon li:last-child { border-bottom: 0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .rayon { box-shadow: none; } }
+:root[data-theme="dark"] .rayon { box-shadow: none; }
 .courses-liste { list-style: none; margin: 0; padding: 0; }
 .courses-liste li { display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--trait); }
 .article {
   flex: 1; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 0.75rem;
   background: none; border: 0; padding: 0.6rem 0; min-height: 48px; text-align: left; cursor: pointer; color: var(--encre);
 }
-.case-courses { width: 1.35rem; height: 1.35rem; border: 2px solid var(--trait); border-radius: 6px; display: inline-block; position: relative; }
+.case-courses { width: 1.35rem; height: 1.35rem; border: 2px solid var(--encre-douce); border-radius: 8px; display: inline-block; position: relative; }
 .article-nom { display: grid; line-height: 1.3; }
 .article-nom small { color: var(--encre-douce); font-size: 0.8rem; }
 .article-qte { font-weight: 700; white-space: nowrap; }
@@ -480,7 +501,7 @@ img { max-width: 100%; }
 }
 .coche .article-nom, .coche .article-qte { text-decoration: line-through; color: var(--encre-douce); }
 .courses-ajout { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; margin-top: 0.75rem; }
-.courses-ajout input { font-size: 1rem; padding: 0.65rem 0.75rem; border: 1.5px solid var(--trait); border-radius: 10px; background: var(--carte); min-width: 0; }
+.courses-ajout input { font-size: 1rem; padding: 0.65rem 0.9rem; border: 1.5px solid var(--trait); border-radius: 24px; background: var(--carte); min-width: 0; }
 .a-la-maison { margin-top: 1.5rem; color: var(--encre-douce); }
 .a-la-maison summary { cursor: pointer; padding: 0.5rem 0; }
 .a-la-maison ul { margin: 0; padding-left: 1.2rem; }
@@ -512,7 +533,7 @@ img { max-width: 100%; }
   line-height: var(--ligne);
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .feuille.papier { filter: brightness(0.9); } }
-.papier .rayon { padding-top: 0; }
+.papier .rayon { padding: 0; margin-top: 0; background: none; border-radius: 0; box-shadow: none; }
 .papier .rayon h2 {
   font-family: inherit; font-weight: 700; font-size: 1.7rem; line-height: var(--ligne); margin: 0;
   color: #2F5D8A; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px;
@@ -591,14 +612,20 @@ img { max-width: 100%; }
 .magasin-ajout input { grid-column: 1 / -1; }
 
 /* ---------- Courses : budget estimé ---------- */
-.budget { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; margin: 0.4rem 0 0.2rem; }
-.budget-total { font-family: var(--titre); font-size: 1.6rem; line-height: 1.2; margin: 0; }
-.budget-magasin { display: flex; align-items: baseline; gap: 0.4rem; color: var(--encre-douce); }
-.budget-magasin select {
-  font: inherit; font-size: 0.95rem; color: var(--encre); background: var(--carte);
-  border: 1.5px solid var(--trait); border-radius: 8px; padding: 0.3rem 0.4rem; max-width: 11rem;
+.budget {   /* lot 15f : carte noire, total en citron */
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.5rem; margin: 0.6rem 0 0.2rem;
+  background: #16181D; color: #F2F3F5; border-radius: 24px; padding: 14px 16px;
 }
-.budget-note { flex-basis: 100%; margin: 0; font-size: 0.85rem; color: var(--encre-douce); }
+.budget-total { font-family: var(--titre); font-size: 1.6rem; line-height: 1.2; margin: 0; color: #C6F35E; }
+.budget-magasin { display: flex; align-items: baseline; gap: 0.4rem; color: #B8BDC7; }
+.budget-magasin select {
+  font: inherit; font-size: 0.95rem; color: #F2F3F5; background: #23262D; color-scheme: dark;
+  border: 1.5px solid #3A3E47; border-radius: 999px; padding: 0.3rem 0.6rem; max-width: 11rem;
+}
+.budget-note { flex-basis: 100%; margin: 0; font-size: 0.85rem; color: #B8BDC7; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .budget { background: #23262D; } :root:not([data-theme="light"]) .budget-magasin select { background: #16181D; } }
+:root[data-theme="dark"] .budget { background: #23262D; }
+:root[data-theme="dark"] .budget-magasin select { background: #16181D; }
 .budget-note:empty { display: none; }
 .rayon-budget { float: right; font-family: var(--texte); font-size: 0.85rem; color: var(--encre-douce); padding-top: 0.2rem; }
 .papier .rayon-budget { display: none; }
@@ -640,11 +667,17 @@ img { max-width: 100%; }
 .fiche-cuisiner { width: 100%; margin: 1.1rem 0 0.2rem; font-size: 1.05rem; min-height: 54px; border-radius: 27px; }
 .cuisine-ouverte, .cuisine-ouverte body { overflow: hidden; }
 .cuisine {
+  /* Lot 15f : le mode cuisine est toujours sombre — les jetons sont redéfinis pour tout l'écran */
+  --encre: #F2F3F5; --encre-douce: #A3A9B4; --faience: #C6F35E; --faience-clair: #262A31; --moutarde: #C6F35E;
+  --fond: #16181D; --carte: #23262D; --trait: #3A3E47;
+  color-scheme: dark;
   position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
   background: var(--fond); color: var(--encre);
   padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
 }
-.cuisine > .vichy { height: 10px; flex: none; }
+.cuisine > .vichy { display: none; }
+.cuisine .bouton:not(.secondaire) { color: #16181D; }
+.cui-barre { margin: 0 1.25rem; border-radius: 3px; overflow: hidden; }
 .cuisine button, .cuisine label { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .cui-entete { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem 0.4rem; flex: none; }
 .cui-quitter {
@@ -662,7 +695,7 @@ img { max-width: 100%; }
 .cui-portions button:disabled { opacity: 0.35; cursor: default; }
 .cui-portions output { min-width: 2.6rem; text-align: center; font-weight: 700; }
 .cui-portions output::after { content: " pers."; font-weight: 400; font-size: 0.8rem; color: var(--encre-douce); }
-.cui-barre { height: 4px; background: var(--trait); flex: none; }
+.cui-barre { height: 6px; background: var(--trait); flex: none; }
 .cui-avance { height: 100%; background: var(--moutarde); transition: width 0.25s ease; }
 @media (prefers-reduced-motion: reduce) { .cui-avance { transition: none; } }
 .cui-corps { flex: 1; overflow-y: auto; padding: 1.25rem 1.25rem 1rem; max-width: 40rem; width: 100%; margin: 0 auto; box-sizing: border-box; }
@@ -705,7 +738,7 @@ img { max-width: 100%; }
 .cui-puce[data-etat="fini"] { border-color: var(--moutarde); background: var(--moutarde); color: #1F2D3D; }
 .cui-nav { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.6rem; padding: 0.75rem 1.25rem 1rem; flex: none;
   max-width: 40rem; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.cui-nav .bouton { padding-left: 0.6rem; padding-right: 0.6rem; }
+.cui-nav .bouton { padding-left: 0.6rem; padding-right: 0.6rem; min-height: 56px; }
 .cui-nav .bouton[hidden] { display: none; }
 .cui-nav .bouton:disabled { opacity: 0.35; cursor: default; }
 :root[data-theme="dark"] .cuisine .bouton:not(.secondaire) { color: #121A22; }
@@ -737,11 +770,21 @@ img { max-width: 100%; }
 .gouts-vide { margin: 0; }
 .gouts-puces { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .gouts-puces li { display: inline-flex; align-items: center; gap: 0.15rem; border-radius: 999px; padding: 0.3rem 0.75rem; font-size: 0.95rem;
-  background: var(--faience-clair); color: var(--encre); }
-.gouts-puces li.gout-aime_pas { background: transparent; border: 1.5px solid var(--encre-douce); }
-.gouts-puces button { border: 0; background: none; color: var(--encre-douce); font: inherit; font-size: 1.15rem; line-height: 1;
+  font-weight: 700; background: #DFF3E4; color: #1E5C3A; }
+.gouts-puces li.gout-aime_pas { background: #FFE3D3; color: #8A2E12; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .gouts-puces li { background: #22332A; color: #BFE8CB; }
+  :root:not([data-theme="light"]) .gouts-puces li.gout-aime_pas { background: #3B2A24; color: #F5C2AE; }
+}
+:root[data-theme="dark"] .gouts-puces li { background: #22332A; color: #BFE8CB; }
+:root[data-theme="dark"] .gouts-puces li.gout-aime_pas { background: #3B2A24; color: #F5C2AE; }
+.gouts-puces button { border: 0; background: none; color: inherit; font: inherit; font-size: 1.15rem; line-height: 1;
   min-width: 32px; min-height: 32px; margin: -0.3rem -0.5rem -0.3rem 0; cursor: pointer; }
 .gouts-ajout { display: grid; gap: 0.35rem; margin-top: 1.1rem; font-weight: 700; }
+.gouts-ajout input {   /* lot 15f : même champ arrondi que le reste de l'appli */
+  font: inherit; font-weight: 400; font-size: 1rem; padding: 0.65rem 0.9rem; min-width: 0;
+  border: 1.5px solid var(--trait); border-radius: 24px; background: var(--carte); color: var(--encre);
+}
 .gouts-sugg { list-style: none; margin: 0.25rem 0 0; padding: 0; }
 .gouts-sugg li { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.55rem 0; border-bottom: 1px solid var(--trait); }
 .gouts-sugg li span { flex: 1 1 0; min-width: 6rem; }

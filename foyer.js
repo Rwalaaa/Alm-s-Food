@@ -5,7 +5,8 @@ App.onglets.push({
   rendre: function (c, ctx) {
     var h = App.h;
     var membres = ctx.membres.map(function (m) {
-      return '<li>' + h(m.prenom) + (m.user_id === ctx.moi.user_id ? ' <span class="discret">(toi)</span>' : '') + '</li>';
+      return '<li><span class="avatar" aria-hidden="true">' + h((m.prenom || '?').charAt(0).toUpperCase()) + '</span>' +
+        h(m.prenom) + (m.user_id === ctx.moi.user_id ? ' <span class="discret">(toi)</span>' : '') + '</li>';
     }).join('');
     var seul = ctx.membres.length < 2;
 
