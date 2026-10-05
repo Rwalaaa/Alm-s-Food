@@ -146,7 +146,7 @@
 
   async function charger(sb) {
     var r = await sb.from('recettes')
-      .select('id, titre, description, categories, pays, vegetarien, temps_prep_min, temps_cuisson_min, portions, ' +
+      .select('id, foyer_id, titre, description, categories, pays, vegetarien, temps_prep_min, temps_cuisson_min, portions, ' +
         'se_mange_froid, source, image_url, image_credit, photo_perso_url, etapes, recette_ingredients(quantite, libelle_quantite, optionnel, ' +
         'ingredients(nom, rayon, unite_base, poids_piece_g, kcal_100g, proteines_100g, glucides_100g, lipides_100g, mois_saison))')
       .order('titre');
@@ -765,6 +765,23 @@
     if (b) { b.disabled = false; b.textContent = r.photo_perso_url ? 'Changer la photo' : 'Ajouter une photo'; }
     if (err) { err.textContent = 'La photo n\'a pas pu être enregistrée : ' + ((e && e.message) || e) + '.'; err.hidden = false; }
   }
+  // Envoi commun à la fiche et au mode cuisine (lot 16d) : renvoie l'adresse de la nouvelle photo
+  App.enregistrerPhoto = async function (r, fichier) {
+    if (!/^image\//.test(fichier.type)) throw new Error('ce fichier n\'est pas une image');
+    var sb = App.sb || (etat.ctx && etat.ctx.sb), foyer = r.foyer_id || (etat.ctx && etat.ctx.foyer && etat.ctx.foyer.id);
+    if (!sb || !foyer) throw new Error('connexion indisponible');
+    var blob = await App.compresserPhoto(fichier);
+    var chemin = foyer + '/' + r.id + '-' + Date.now() + '.jpg';
+    var up = await sb.storage.from('photos').upload(chemin, blob, { contentType: 'image/jpeg', upsert: false });
+    if (up.error) throw up.error;
+    var url = sb.storage.from('photos').getPublicUrl(chemin).data.publicUrl;
+    var maj = await sb.from('recettes').update({ photo_perso_url: url }).eq('id', r.id);
+    if (maj.error) { await sb.storage.from('photos').remove([chemin]); throw maj.error; }
+    var ancien = App.cheminPhoto(r.photo_perso_url);
+    r.photo_perso_url = url;
+    if (ancien) await sb.storage.from('photos').remove([ancien]);   // ménage ; un échec ici ne bloque rien
+    return url;
+  };
   async function envoyerPhoto(c, r, fichier) {
     if (etat.occupe) return;
     etat.occupe = true;
@@ -772,17 +789,7 @@
     b.disabled = true; b.textContent = 'Envoi de la photo…';
     c.querySelector('#fiche-erreur').hidden = true;
     try {
-      if (!/^image\//.test(fichier.type)) throw new Error('ce fichier n\'est pas une image');
-      var blob = await App.compresserPhoto(fichier);
-      var sb = etat.ctx.sb, chemin = etat.ctx.foyer.id + '/' + r.id + '-' + Date.now() + '.jpg';
-      var up = await sb.storage.from('photos').upload(chemin, blob, { contentType: 'image/jpeg', upsert: false });
-      if (up.error) throw up.error;
-      var url = sb.storage.from('photos').getPublicUrl(chemin).data.publicUrl;
-      var maj = await sb.from('recettes').update({ photo_perso_url: url }).eq('id', r.id);
-      if (maj.error) { await sb.storage.from('photos').remove([chemin]); throw maj.error; }
-      var ancien = App.cheminPhoto(r.photo_perso_url);
-      r.photo_perso_url = url;
-      if (ancien) await sb.storage.from('photos').remove([ancien]);   // ménage ; un échec ici ne bloque rien
+      await App.enregistrerPhoto(r, fichier);
       etat.occupe = false;
       rendreFiche(c);
     } catch (e) { erreurPhoto(c, r, e); }

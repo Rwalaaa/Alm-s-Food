@@ -215,8 +215,27 @@
     return '<div class="cui-fin"><h2 class="cui-titre">Bon appétit</h2>' +
       '<p class="discret">' + (repas && repas.cuisine_le ? 'Ce repas est noté comme cuisiné.' : 'Toutes les étapes sont faites.') + '</p>' +
       (noter ? '<button type="button" class="bouton" data-action="noter"' + (et.occupe ? ' disabled' : '') + '>Noter le repas comme cuisiné</button>' : '') +
+      boutonPhoto() +
       '<button type="button" class="bouton' + (noter ? ' secondaire' : '') + '" data-action="quitter">Quitter le mode cuisine</button>' +
       erreur + '</div>';
+  }
+  // Lot 16d : photo du plat, prise directement avec l'appareil photo
+  function boutonPhoto() {
+    if (!App.enregistrerPhoto) return '';
+    var envoi = et.photo === 'envoi';
+    return '<input type="file" accept="image/*" capture="environment" data-photo hidden>' +
+      '<button type="button" class="bouton secondaire" data-action="photo"' + (envoi ? ' disabled' : '') + '>' +
+        (envoi ? 'Envoi de la photo…' : et.photo === 'ok' ? 'Reprendre la photo' :
+          et.recette.photo_perso_url ? 'Changer la photo du plat' : 'Prendre une photo du plat') + '</button>' +
+      (et.photo === 'ok' ? '<p class="discret" role="status">Photo enregistrée : elle s\'affiche maintenant pour ce plat.</p>' : '');
+  }
+  async function photoPlat(fichier) {
+    var ici = et;
+    if (!ici || ici.photo === 'envoi') return;
+    ici.photo = 'envoi'; ici.erreur = ''; rendre();
+    try { await App.enregistrerPhoto(ici.recette, fichier); ici.photo = 'ok'; }
+    catch (err) { ici.photo = ''; ici.erreur = 'La photo n\'a pas pu être enregistrée : ' + ((err && err.message) || err) + '.'; }
+    if (et === ici) rendre();
   }
   // Ce qui va changer au placard, avant de valider
   function qte(v, unite) { return App.quantiteStock ? App.quantiteStock(v, unite) : v + ' ' + unite; }
@@ -347,6 +366,10 @@
     document.documentElement.classList.add('cuisine-ouverte');
     c.addEventListener('click', clic);
     c.addEventListener('change', function (e) {   // « Il n'en reste plus » dans le bilan du placard
+      if (e.target.hasAttribute && e.target.hasAttribute('data-photo')) {   // lot 16d : photo du plat
+        if (e.target.files && e.target.files[0]) photoPlat(e.target.files[0]);
+        return;
+      }
       var k = e.target.dataset && e.target.dataset.epuise;
       if (!k || !et) return;
       et.epuises = et.epuises.filter(function (x) { return x !== k; });
@@ -388,6 +411,7 @@
     var d = b.dataset;
     if (d.action === 'quitter') return quitter();
     if (d.action === 'noter') return noter();
+    if (d.action === 'photo') { var champ = et.el.querySelector('[data-photo]'); if (champ) champ.click(); return; }
     if (d.action === 'valider') return enregistrer();
     if (d.action === 'annuler-bilan') { et.bilan = null; et.erreur = ''; return rendre(); }
     if (d.portions) {
