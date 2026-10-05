@@ -2,7 +2,8 @@
 (function () {
   var h = App.h;
   var ETIQUETTES = ['Rapide', 'Végé', 'Léger', 'Copieux', 'Gamelle', 'Réconfortant', 'Petit budget', 'Soupe'];
-  var etat = { recettes: null, filtres: [], pays: '', texte: '', ouverte: null, form: null, catalogue: null, ctx: null, occupe: false };
+  var etat = { recettes: null, filtres: [], pays: '', texte: '', ouverte: null, form: null, catalogue: null, ctx: null, occupe: false,
+    ciqual: null, ciqualErreur: '' };
 
   // Calcul des valeurs nutritives d'une portion (ingrédients facultatifs exclus)
   App.nutritionPortion = function (r) {
@@ -197,6 +198,57 @@
     return etat.catalogue;
   }
 
+  // Table Ciqual (Anses) : chargée une fois, à la création du premier nouvel ingrédient
+  async function chargerCiqual(sb) {
+    if (etat.ciqual) return etat.ciqual;
+    var r = await sb.from('ciqual').select('code, nom, kcal_100g, proteines_100g, glucides_100g, lipides_100g, fibres_100g').order('nom');
+    if (r.error) throw r.error;
+    etat.ciqual = (r.data || []).map(function (c) { c.cle = simplifier(c.nom); return c; });
+    return etat.ciqual;
+  }
+  function chercherCiqual(texte) {
+    var mots = simplifier(texte).split(/[^a-z0-9]+/).filter(function (m) { return m.length > 1; });
+    if (!mots.length || !etat.ciqual) return [];
+    return etat.ciqual.filter(function (c) {
+      return mots.every(function (m) { return c.cle.indexOf(m) !== -1; });
+    }).map(function (c) {   // d'abord les noms qui commencent par le premier mot, puis l'aliment cru, puis les plus courts
+      return { c: c, score: (c.cle.indexOf(mots[0]) === 0 ? 0 : 2) + (/\bcrue?s?\b/.test(c.cle) ? 0 : 1) };
+    }).sort(function (a, b) { return a.score - b.score || a.c.nom.length - b.c.nom.length; })
+      .slice(0, 8).map(function (x) { return x.c; });
+  }
+  function kcalCiqual(c) {   // même calcul que la base quand Ciqual ne donne pas les calories
+    if (c.kcal_100g != null) return Number(c.kcal_100g);
+    if (c.proteines_100g == null || c.glucides_100g == null || c.lipides_100g == null) return null;
+    return Math.round((4 * c.proteines_100g + 4 * c.glucides_100g + 9 * c.lipides_100g + 2 * (c.fibres_100g || 0)) * 10) / 10;
+  }
+  function nombre(v) { return String(Math.round(Number(v) * 10) / 10).replace('.', ','); }
+  function resumeCiqual(c) {
+    var k = kcalCiqual(c);
+    return (k == null ? '? kcal' : nombre(k) + ' kcal') +
+      (c.proteines_100g != null ? ' · prot. ' + nombre(c.proteines_100g) + ' g' : '') +
+      (c.glucides_100g != null ? ' · gluc. ' + nombre(c.glucides_100g) + ' g' : '') +
+      (c.lipides_100g != null ? ' · lip. ' + nombre(c.lipides_100g) + ' g' : '');
+  }
+  function blocCiqual(N) {
+    if (N.ciqual) {
+      return '<div class="ciqual-choisi"><p><span class="discret">Valeurs nutritives (Ciqual)</span>' +
+        '<strong>' + h(N.ciqual.nom) + '</strong><span class="discret">Pour 100 g : ' + h(resumeCiqual(N.ciqual)) + '</span></p>' +
+        '<button type="button" class="lien" data-ciqual-changer="1">Changer</button></div>';
+    }
+    var res = etat.ciqual ? chercherCiqual(N.ciqualTexte || '') : [];
+    return '<label><span>Valeurs nutritives <span class="discret">(facultatif, table Ciqual)</span></span>' +
+        '<input id="ciqual-texte" autocomplete="off" maxlength="60" value="' + h(N.ciqualTexte || '') + '" placeholder="Ex. : courgette crue"></label>' +
+      (etat.ciqualErreur ? '<p class="erreur">' + h(etat.ciqualErreur) + '</p>'
+        : !etat.ciqual ? '<p class="discret">Chargement de la table Ciqual…</p>'
+        : res.length ? '<ul class="suggestions">' + res.map(function (c) {
+            var k = kcalCiqual(c);
+            return '<li><button type="button" data-ciqual="' + c.code + '">' + h(c.nom) +
+              ' <span class="discret">' + (k == null ? '' : nombre(k) + ' kcal') + '</span></button></li>';
+          }).join('') + '</ul>'
+        : '<p class="discret">' + (N.ciqualTexte && N.ciqualTexte.trim() ? 'Aucun aliment trouvé. ' : '') +
+            'Sans valeurs, la recette n\'aura pas d\'étiquette Léger ou Copieux.</p>');
+  }
+
   function infoIngredient(ing) {   // ingrédient du catalogue, ou nouveau
     return ing.nouveau || etat.catalogue.find(function (x) { return x.nom === ing.nom; }) || {};
   }
@@ -337,7 +389,8 @@
             return '<option value="' + u + '"' + (E.nouveau.unite_base === u ? ' selected' : '') + '>' + UNITES[u] + '</option>'; }).join('') + '</select></label>' +
           '</div>' +
           (E.nouveau.unite_base === 'piece'
-            ? '<label><span>Poids d\'une pièce <span class="discret">(facultatif)</span></span><span class="champ-unite"><input data-nouveau="poids_piece_g" type="number" inputmode="decimal" min="1" value="' + h(E.nouveau.poids_piece_g || '') + '"><span>g</span></span></label>' : '');
+            ? '<label><span>Poids d\'une pièce <span class="discret">(facultatif)</span></span><span class="champ-unite"><input data-nouveau="poids_piece_g" type="number" inputmode="decimal" min="1" value="' + h(E.nouveau.poids_piece_g || '') + '"><span>g</span></span></label>' : '') +
+          blocCiqual(E.nouveau);
       }
       html += '<label>Quantité pour la recette<span class="champ-unite"><input id="ingr-quantite" type="number" inputmode="decimal" min="0" step="any" value="' + h(E.quantite) + '"><span>' + UNITES[i.unite_base] + '</span></span></label>' +
         '<label class="case"><input type="checkbox" id="ingr-optionnel"' + (E.optionnel ? ' checked' : '') + '> Facultatif</label>' +
@@ -411,8 +464,41 @@
     if (creer) creer.addEventListener('click', function () {
       var nom = E.texte.trim();
       E.choisi = nom.charAt(0).toUpperCase() + nom.slice(1);
-      E.nouveau = { nom: E.choisi, rayon: 'autre', unite_base: 'g', poids_piece_g: '' };
+      E.nouveau = { nom: E.choisi, rayon: 'autre', unite_base: 'g', poids_piece_g: '', ciqual: null, ciqualTexte: nom, kcal_100g: null };
       re();
+      if (!etat.ciqual) {
+        etat.ciqualErreur = '';
+        chargerCiqual(etat.ctx.sb).then(function () { if (etat.form && etat.form.editeur === E) reEditeur(); },
+          function (err) { etat.ciqualErreur = App.traduireErreur(err); if (etat.form && etat.form.editeur === E) reEditeur(); });
+      }
+    });
+    // Réaffiche en gardant la quantité déjà tapée
+    function reEditeur() {
+      E.quantite = (c.querySelector('#ingr-quantite') || {}).value || E.quantite;
+      re();
+    }
+    var cq = c.querySelector('#ciqual-texte');
+    if (cq) cq.addEventListener('input', function () {
+      E.nouveau.ciqualTexte = cq.value;
+      var pos = cq.selectionStart;
+      reEditeur();
+      var t = c.querySelector('#ciqual-texte'); t.focus(); try { t.setSelectionRange(pos, pos); } catch (err) { /* */ }
+    });
+    c.querySelectorAll('[data-ciqual]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var code = Number(b.dataset.ciqual);
+        var ch = etat.ciqual.find(function (x) { return x.code === code; });
+        if (!ch) return;
+        E.nouveau.ciqual = ch;
+        E.nouveau.kcal_100g = kcalCiqual(ch);
+        reEditeur();
+      });
+    });
+    var changer = c.querySelector('[data-ciqual-changer]');
+    if (changer) changer.addEventListener('click', function () {
+      E.nouveau.ciqual = null; E.nouveau.kcal_100g = null;
+      reEditeur();
+      var t = c.querySelector('#ciqual-texte'); if (t) t.focus();
     });
     c.querySelectorAll('[data-nouveau]').forEach(function (el) {
       el.addEventListener('change', function () {
@@ -479,7 +565,8 @@
       // ingrédient du catalogue -> son id ; nouvel ingrédient -> créé par la base dans la même opération
       ingredients: F.ingredients.map(function (i) {
         var d = { quantite: i.quantite, libelle: i.libelle || libelle(i.quantite, infoIngredient(i).unite_base), optionnel: !!i.optionnel };
-        if (i.nouveau) d.nouveau = { nom: i.nom, rayon: i.nouveau.rayon, unite_base: i.nouveau.unite_base, poids_piece_g: i.nouveau.poids_piece_g || '' };
+        if (i.nouveau) d.nouveau = { nom: i.nom, rayon: i.nouveau.rayon, unite_base: i.nouveau.unite_base, poids_piece_g: i.nouveau.poids_piece_g || '',
+          ciqual_code: i.nouveau.ciqual ? i.nouveau.ciqual.code : '' };
         else d.ingredient_id = infoIngredient(i).id;
         return d;
       })

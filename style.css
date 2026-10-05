@@ -623,3 +623,8 @@ img { max-width: 100%; }
 .cui-bilan input { width: 1.3rem; height: 1.3rem; margin: 0.1rem 0 0; accent-color: var(--faience); flex: none; }
 .cui-bilan small { display: block; font-size: 0.85rem; color: var(--encre-douce); }
 .cui-bilan-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 0.6rem; margin-top: 0.4rem; }
+/* Nouvel ingrédient : valeurs nutritives tirées de Ciqual (lot 12b) */
+.ciqual-choisi { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.6rem 0.75rem; border-radius: 10px; background: var(--faience-clair); }
+.ciqual-choisi p { flex: 1; min-width: 0; margin: 0; display: grid; gap: 0.15rem; }
+.ciqual-choisi strong { font-weight: 700; }
+.ciqual-choisi .lien { margin: 0; padding: 0.15rem 0; flex: none; color: var(--faience); }
