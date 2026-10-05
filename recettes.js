@@ -93,6 +93,12 @@
   App.vignette = function (r) {
     var cle = String((r && (r.id || r.titre)) || ''), n = 0;
     for (var i = 0; i < cle.length; i++) n = (n * 31 + cle.charCodeAt(i)) >>> 0;
+    // Lot 16b : la photo du plat quand il y en a une (la nôtre d'abord, sinon la photo libre)
+    var photo = r && (r.photo_perso_url || r.image_url);
+    if (photo && /^https:\/\//.test(photo)) {
+      return '<span class="rec-vignette a-photo" data-teinte="' + (n % 4) + '" aria-hidden="true">' +
+        '<img src="' + h(photo) + '" alt="" loading="lazy" decoding="async" onerror="this.remove()"></span>';
+    }
     var a = ASSIETTES[Math.floor(n / 4) % ASSIETTES.length];
     return '<span class="rec-vignette" data-teinte="' + (n % 4) + '" aria-hidden="true"><svg viewBox="0 0 120 120">' +
       '<circle cx="60" cy="60" r="50" fill="#FFFFFF"/><circle cx="60" cy="60" r="38" fill="' + a[0] + '"/>' +
@@ -141,7 +147,7 @@
   async function charger(sb) {
     var r = await sb.from('recettes')
       .select('id, titre, description, categories, pays, vegetarien, temps_prep_min, temps_cuisson_min, portions, ' +
-        'se_mange_froid, source, image_url, photo_perso_url, etapes, recette_ingredients(quantite, libelle_quantite, optionnel, ' +
+        'se_mange_froid, source, image_url, image_credit, photo_perso_url, etapes, recette_ingredients(quantite, libelle_quantite, optionnel, ' +
         'ingredients(nom, rayon, unite_base, poids_piece_g, kcal_100g, proteines_100g, glucides_100g, lipides_100g, mois_saison))')
       .order('titre');
     if (r.error) throw r.error;
@@ -262,6 +268,7 @@
       '<article class="fiche">' +
         '<h2 class="fiche-titre">' + h(r.titre) + '</h2>' +
         (r.description ? '<p class="fiche-desc">' + h(r.description) + '</p>' : '') +
+        (!r.photo_perso_url && r.image_url && r.image_credit ? '<p class="photo-credit">Photo : ' + h(r.image_credit) + '</p>' : '') +
         '<p class="fiche-etiquettes">' + (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') +
           (r.categories || []).map(function (e) { return '<span data-etq="' + h(e) + '">' + h(e) + '</span>'; }).join('') + '</p>' +
         texteSaison(r) +
@@ -290,6 +297,11 @@
           return '<li>' + h(e.texte) + (e.minuteur_s ? ' <span class="minuteur">' + dureeTexte(Math.round(e.minuteur_s / 60)) + '</span>' : '') + '</li>';
         }).join('') + '</ol>' +
       '</article>' +
+      '<div class="fiche-photo">' +
+        '<input type="file" id="fiche-photo-fichier" accept="image/*" hidden>' +
+        '<button type="button" class="bouton secondaire" id="fiche-photo">' + (r.photo_perso_url ? 'Changer la photo' : 'Ajouter une photo') + '</button>' +
+        (r.photo_perso_url ? '<button type="button" class="lien" id="fiche-photo-retirer">Retirer notre photo</button>' : '') +
+      '</div>' +
       '<div class="fiche-actions">' +
         '<button type="button" class="bouton secondaire" id="fiche-modifier">Modifier</button>' +
         '<button type="button" class="bouton-danger" id="fiche-supprimer">Supprimer</button>' +
@@ -302,6 +314,11 @@
     c.querySelector('#fiche-supprimer').addEventListener('click', function () { supprimer(c, r); });
     var cuire = c.querySelector('#fiche-cuisiner');
     if (cuire) cuire.addEventListener('click', function () { App.ouvrirCuisine(r); });
+    var champPhoto = c.querySelector('#fiche-photo-fichier');
+    c.querySelector('#fiche-photo').addEventListener('click', function () { champPhoto.click(); });
+    champPhoto.addEventListener('change', function () { if (champPhoto.files && champPhoto.files[0]) envoyerPhoto(c, r, champPhoto.files[0]); });
+    var retirerPhotoBtn = c.querySelector('#fiche-photo-retirer');
+    if (retirerPhotoBtn) retirerPhotoBtn.addEventListener('click', function () { retirerPhoto(c, r); });
     window.scrollTo(0, 0);
   }
 
@@ -723,6 +740,68 @@
   }
 
   // ---------- Suppression ----------
+  // ---------- Photo du plat (lot 16b) ----------
+  // Réduite à 1200 px en JPEG sur le téléphone, rangée dans photos/<foyer>/, l'ancienne est supprimée quand on la remplace
+  var PREFIXE_PHOTOS = '/storage/v1/object/public/photos/';
+  App.cheminPhoto = function (url) {   // chemin dans l'espace « photos » (seulement pour nos propres photos)
+    var i = url ? url.indexOf(PREFIXE_PHOTOS) : -1;
+    return i === -1 ? null : decodeURIComponent(url.slice(i + PREFIXE_PHOTOS.length).split('?')[0]);
+  };
+  App.compresserPhoto = async function (fichier, max, qualite) {
+    var img = await createImageBitmap(fichier);
+    var k = Math.min(1, (max || 1200) / Math.max(img.width, img.height));
+    var cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(img.width * k));
+    cv.height = Math.max(1, Math.round(img.height * k));
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    if (img.close) img.close();
+    return await new Promise(function (ok, ko) {
+      cv.toBlob(function (b) { if (b) ok(b); else ko(new Error('compression impossible')); }, 'image/jpeg', qualite || 0.82);
+    });
+  };
+  function erreurPhoto(c, r, e) {
+    etat.occupe = false;
+    var b = c.querySelector('#fiche-photo'), err = c.querySelector('#fiche-erreur');
+    if (b) { b.disabled = false; b.textContent = r.photo_perso_url ? 'Changer la photo' : 'Ajouter une photo'; }
+    if (err) { err.textContent = 'La photo n\'a pas pu être enregistrée : ' + ((e && e.message) || e) + '.'; err.hidden = false; }
+  }
+  async function envoyerPhoto(c, r, fichier) {
+    if (etat.occupe) return;
+    etat.occupe = true;
+    var b = c.querySelector('#fiche-photo');
+    b.disabled = true; b.textContent = 'Envoi de la photo…';
+    c.querySelector('#fiche-erreur').hidden = true;
+    try {
+      if (!/^image\//.test(fichier.type)) throw new Error('ce fichier n\'est pas une image');
+      var blob = await App.compresserPhoto(fichier);
+      var sb = etat.ctx.sb, chemin = etat.ctx.foyer.id + '/' + r.id + '-' + Date.now() + '.jpg';
+      var up = await sb.storage.from('photos').upload(chemin, blob, { contentType: 'image/jpeg', upsert: false });
+      if (up.error) throw up.error;
+      var url = sb.storage.from('photos').getPublicUrl(chemin).data.publicUrl;
+      var maj = await sb.from('recettes').update({ photo_perso_url: url }).eq('id', r.id);
+      if (maj.error) { await sb.storage.from('photos').remove([chemin]); throw maj.error; }
+      var ancien = App.cheminPhoto(r.photo_perso_url);
+      r.photo_perso_url = url;
+      if (ancien) await sb.storage.from('photos').remove([ancien]);   // ménage ; un échec ici ne bloque rien
+      etat.occupe = false;
+      rendreFiche(c);
+    } catch (e) { erreurPhoto(c, r, e); }
+  }
+  async function retirerPhoto(c, r) {
+    if (etat.occupe) return;
+    etat.occupe = true;
+    try {
+      var sb = etat.ctx.sb;
+      var maj = await sb.from('recettes').update({ photo_perso_url: null }).eq('id', r.id);
+      if (maj.error) throw maj.error;
+      var ancien = App.cheminPhoto(r.photo_perso_url);
+      r.photo_perso_url = null;
+      if (ancien) await sb.storage.from('photos').remove([ancien]);
+      etat.occupe = false;
+      rendreFiche(c);
+    } catch (e) { erreurPhoto(c, r, e); }
+  }
+
   async function supprimer(c, r) {
     if (etat.occupe) return;
     var err = c.querySelector('#fiche-erreur');

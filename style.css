@@ -665,6 +665,12 @@ img { max-width: 100%; }
 
 /* ---------- Mode cuisine (lot 10a) ---------- */
 .fiche-cuisiner { width: 100%; margin: 1.1rem 0 0.2rem; font-size: 1.05rem; min-height: 54px; border-radius: 27px; }
+/* Lot 16b : photos des plats */
+.rec-vignette img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fiche-hero .rec-vignette.a-photo { padding-top: 0; }
+.photo-credit { margin: -0.4rem 0 0.7rem; font-size: 0.75rem; color: var(--encre-douce); }
+.fiche-photo { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 1.25rem 0 0; }
+.fiche-photo .lien { margin: 0; }
 .cuisine-ouverte, .cuisine-ouverte body { overflow: hidden; }
 .cuisine {
   /* Lot 15f : le mode cuisine est toujours sombre — les jetons sont redéfinis pour tout l'écran */
