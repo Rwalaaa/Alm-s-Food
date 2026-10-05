@@ -10,6 +10,8 @@
   var etat = { decalage: 0, liste: null, articles: [], erreur: '', occupe: false, papier: App.lire('papier', false),
     prix: [], magasins: [], magasin: App.lire('magasin', ''), prixPour: null };
   var CHAMPS_ART = 'id, ingredient_id, libelle_libre, quantite, coche, prix_paye_eur';
+  var CHAMPS_PRIX = 'ingredient_id, magasin_id, prix_eur, quantite, releve_le, source';
+  var UNITES_ACHAT = { g: [['g', 1], ['kg', 1000]], ml: [['ml', 1], ['cl', 10], ['L', 1000]], piece: [['pièce(s)', 1]] };
 
   // ---------- Dates ----------
   function lundiCible() {
@@ -76,7 +78,9 @@
   App.estimerCourses = function (aAcheter, prix, magasins, magasinId) {
     var mag = magasins.find(function (m) { return m.id === magasinId; });
     var coef = mag ? Number(mag.coefficient) : 1;
-    var recent = function (a, b) { return String(b.releve_le || '').localeCompare(String(a.releve_le || '')); };
+    var recent = function (a, b) {   // le plus récent d'abord ; à date égale, le ticket avant la référence
+      return String(b.releve_le || '').localeCompare(String(a.releve_le || '')) || (b.source === 'ticket') - (a.source === 'ticket');
+    };
     var couts = {}, total = 0, sansPrix = [];
     aAcheter.forEach(function (b) {
       var id = b.ingredient.id;
@@ -111,7 +115,7 @@
       sb.from('ingredients').select('id, nom, rayon, unite_base'),
       sb.from('stock').select('ingredient_id, quantite'),
       sb.from('liste_articles').select(CHAMPS_ART).eq('semaine', App.dateISO(lundi)).order('id'),
-      sb.from('prix').select('ingredient_id, magasin_id, prix_eur, quantite, releve_le'),
+      sb.from('prix').select(CHAMPS_PRIX),
       sb.from('magasins').select('id, nom, coefficient').order('nom')
     ]);
     for (var k = 1; k < 5; k++) if (res[k].error) throw res[k].error;
@@ -262,7 +266,7 @@
     var libre = cle.indexOf('lib:') === 0, id = cle.slice(4);
     var a = libre ? etat.articles.find(function (x) { return String(x.id) === id; }) : articleDe(id);
     var b = libre ? null : etat.liste.aAcheter.find(function (x) { return x.ingredient.id === id; });
-    return { libre: libre, id: id, article: a, nom: libre ? (a && a.libelle_libre) : (b && b.ingredient.nom),
+    return { libre: libre, id: id, article: a, nom: libre ? (a && a.libelle_libre) : (b && b.ingredient.nom), unite: b ? b.ingredient.unite_base : null,
       qte: b ? App.quantiteCourses(b.quantite, b.ingredient.unite_base) : '' };
   }
 
@@ -275,6 +279,12 @@
         '<label class="prix-champ"><span>Prix payé' + (mag ? ' chez ' + h(mag.nom) : '') + '</span>' +
           '<span class="champ-unite"><input id="prix-valeur" type="text" inputmode="decimal" autocomplete="off" maxlength="8" placeholder="0,00" value="' +
           (p != null ? h(String(Number(p)).replace('.', ',')) : '') + '"><span>€</span></span></label>' +
+        (I.unite ? '<label class="prix-champ"><span>Quantité achetée <span class="discret">(facultatif)</span></span>' +
+          '<span class="prix-qte"><input id="prix-qte" type="text" inputmode="decimal" autocomplete="off" maxlength="7" aria-label="Quantité achetée">' +
+          '<select id="prix-unite" aria-label="Unité">' + UNITES_ACHAT[I.unite].map(function (u, k) {
+            return '<option value="' + u[1] + '"' + (k === (I.unite === 'piece' ? 0 : 1) ? ' selected' : '') + '>' + u[0] + '</option>';
+          }).join('') + '</select></span>' +
+          '<small class="discret">Ex. 1 L pour la bouteille : le prix servira aux prochaines estimations.</small></label>' : '') +
         '<p class="erreur" role="alert" id="prix-erreur" hidden></p>' +
         '<div class="editeur-boutons"><button type="button" class="bouton secondaire" id="prix-annuler">Annuler</button>' +
           '<button type="button" class="bouton" id="prix-enregistrer">Enregistrer</button></div>' +
@@ -298,6 +308,8 @@
     c.querySelector('#prix-annuler').addEventListener('click', fermer);
     c.querySelector('#prix-fond').addEventListener('click', fermer);
     c.querySelector('#prix-enregistrer').addEventListener('click', function () { enregistrerPrix(c, ctx, c.querySelector('#prix-valeur').value); });
+    var pq = c.querySelector('#prix-qte');
+    if (pq) pq.addEventListener('keydown', function (e) { if (e.key === 'Enter') enregistrerPrix(c, ctx, c.querySelector('#prix-valeur').value); });
     c.querySelector('#prix-valeur').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') enregistrerPrix(c, ctx, e.target.value);
       if (e.key === 'Escape') fermer();
@@ -323,6 +335,17 @@
         pe.textContent = 'Prix invalide : écris par exemple 2,35.'; pe.hidden = false;
         return;
       }
+    }
+    var achat = null;   // quantité achetée, en unité de base
+    var qteTexte = c.querySelector('#prix-qte') ? c.querySelector('#prix-qte').value.trim() : '';
+    if (valeur !== null && qteTexte) {
+      var nq = Number(qteTexte.replace(',', '.'));
+      if (!isFinite(nq) || nq <= 0 || nq > 100000) {
+        var pq = c.querySelector('#prix-erreur');
+        pq.textContent = 'Quantité invalide : écris par exemple 1 ou 0,5.'; pq.hidden = false;
+        return;
+      }
+      achat = nq * Number(c.querySelector('#prix-unite').value);
     }
     var champs = { prix_paye_eur: valeur, magasin_id: valeur === null ? null : (etat.magasin || null) };
     if (valeur !== null && !(I.article && I.article.coche)) {   // payé = dans le caddie
@@ -350,7 +373,22 @@
     }
     etat.prixPour = null;
     etat.erreur = '';
+    if (achat && valeur > 0) etat.erreur = await retenirPrix(ctx, I.id, valeur, achat);
     if (afficheeMaintenant()) rendre(c, ctx);
+  }
+
+  // Ticket : on ne garde que le dernier prix relevé par ingrédient et par magasin (aucun magasin = magasin moyen)
+  async function retenirPrix(ctx, ingredientId, valeur, achat) {
+    var mag = etat.magasin && etat.magasins.some(function (m) { return m.id === etat.magasin; }) ? etat.magasin : null;
+    var d = ctx.sb.from('prix').delete().eq('ingredient_id', ingredientId).eq('source', 'ticket');
+    d = mag ? d.eq('magasin_id', mag) : d.is('magasin_id', null);
+    var r = await d;
+    if (!r.error) r = await ctx.sb.from('prix').insert({ ingredient_id: ingredientId, magasin_id: mag, prix_eur: valeur, quantite: achat, source: 'ticket' })
+      .select(CHAMPS_PRIX).single();
+    if (r.error) return 'Prix payé noté, mais pas retenu pour les estimations : ' + App.traduireErreur(r.error);
+    etat.prix = etat.prix.filter(function (p) { return !(p.ingredient_id === ingredientId && p.source === 'ticket' && (p.magasin_id || null) === mag); });
+    etat.prix.push(r.data);
+    return '';
   }
 
   // ---------- Actions ----------

@@ -533,3 +533,10 @@ img { max-width: 100%; }
   position: relative; z-index: 1; font: inherit; font-weight: 700; color: #B03A2E;
   background: #FBF8EE; padding-left: 0.35rem; transform: rotate(-2deg);
 }
+.prix-qte { display: flex; gap: 0.5rem; align-items: center; }
+.prix-qte input, .prix-qte select {
+  font-size: 1.1rem; padding: 0.5rem 0.65rem; border: 1.5px solid var(--trait); border-radius: 10px;
+  background: var(--fond); color: var(--encre); font-family: var(--texte); font-weight: 400;
+}
+.prix-qte input { width: 6rem; }
+.prix-champ small { font-weight: 400; font-size: 0.82rem; }
