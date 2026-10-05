@@ -3,7 +3,7 @@
   var h = App.h;
   var ETIQUETTES = ['Rapide', 'Végé', 'Léger', 'Copieux', 'Gamelle', 'Réconfortant', 'Petit budget', 'Soupe'];
   var etat = { recettes: null, filtres: [], pays: '', texte: '', ouverte: null, form: null, catalogue: null, ctx: null, occupe: false,
-    ciqual: null, ciqualErreur: '', placard: {} };
+    ciqual: null, ciqualErreur: '', placard: {}, gouts: {} };
 
   // Calcul des valeurs nutritives d'une portion (ingrédients facultatifs exclus)
   App.nutritionPortion = function (r) {
@@ -86,6 +86,39 @@
     return n ? '<span class="placard">' + n + ' au placard</span>' : '';
   };
 
+  // ---------- Goûts du foyer (lot 14b) ----------
+  // Nom d'ingrédient -> { aime: [prénoms], aime_pas: [prénoms] }
+  App.chargerGouts = async function (sb) {
+    var r = await sb.from('preferences').select('avis, ingredients(nom), membres(prenom)');
+    if (r.error) throw r.error;
+    var g = {};
+    (r.data || []).forEach(function (l) {
+      if (!l.ingredients || !l.membres || (l.avis !== 'aime' && l.avis !== 'aime_pas')) return;
+      var x = g[l.ingredients.nom] || (g[l.ingredients.nom] = { aime: [], aime_pas: [] });
+      x[l.avis].push(l.membres.prenom);
+    });
+    return g;
+  };
+  // Pour un plat : qui n'aime pas quoi, et combien d'ingrédients aimés (facultatifs ignorés)
+  App.goutsRecette = function (r, gouts) {
+    var pas = {}, ordre = [], aimes = [];
+    (r.recette_ingredients || []).forEach(function (ri) {
+      var i = ri.ingredients, x = i && !ri.optionnel && Object.prototype.hasOwnProperty.call(gouts || {}, i.nom) ? gouts[i.nom] : null;
+      if (!x) return;
+      x.aime_pas.forEach(function (p) {
+        if (!pas[p]) { pas[p] = []; ordre.push(p); }
+        if (pas[p].indexOf(i.nom) === -1) pas[p].push(i.nom);
+      });
+      if (x.aime.length && aimes.indexOf(i.nom) === -1) aimes.push(i.nom);
+    });
+    return { pas: ordre.map(function (p) { return { prenom: p, noms: pas[p] }; }), aimes: aimes };
+  };
+  App.mentionGouts = function (r, gouts) {
+    return App.goutsRecette(r, gouts).pas.map(function (x) {
+      return '<span class="hors-saison gout-pas">' + h(x.prenom) + ' n\'aime pas : ' + h(x.noms.map(function (n) { return n.charAt(0).toLowerCase() + n.slice(1); }).join(', ')) + '</span>';
+    }).join('');
+  };
+
   function dureeTexte(min) {
     if (min < 60) return min + ' min';
     var hh = Math.floor(min / 60), mm = min % 60;
@@ -160,7 +193,7 @@
           return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '">' +
             '<span class="rec-titre">' + h(r.titre) + '</span>' +
             '<span class="rec-infos"><span>' + dureeTexte(r.temps_prep_min + r.temps_cuisson_min) + '</span>' +
-            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + App.mentionSaison(r, moisCourant()) + App.mentionPlacard(r, etat.placard) +
+            '<span>' + r._nutri.kcal + ' kcal</span>' + (r.pays ? '<span>' + h(r.pays) + '</span>' : '') + App.mentionSaison(r, moisCourant()) + App.mentionPlacard(r, etat.placard) + App.mentionGouts(r, etat.gouts) +
             (r.source === 'perso' ? '<span class="perso">Ma recette</span>' : '') + '</span>' +
             '</button></li>';
         }).join('');
@@ -197,6 +230,14 @@
         return h(x.nom.toLowerCase()) + ' (' + x.quand + ')'; }).join(', ') + '.' : '') + '</p>';
   }
 
+  // « Mé n'aime pas » à côté d'un ingrédient de la fiche (facultatifs ignorés)
+  function mentionGoutIngr(ri) {
+    var nom = ri.ingredients && ri.ingredients.nom;
+    if (ri.optionnel || !nom || !Object.prototype.hasOwnProperty.call(etat.gouts, nom)) return '';
+    var qui = etat.gouts[nom].aime_pas;
+    return qui.length ? ' <span class="hors-saison gout-pas">' + h(qui.join(' et ')) + (qui.length > 1 ? ' n\'aiment pas' : ' n\'aime pas') + '</span>' : '';
+  }
+
   function rendreFiche(c) {
     var r = etat.recettes.find(function (x) { return x.id === etat.ouverte; });
     if (!r) { etat.ouverte = null; return rendreListe(c); }
@@ -227,7 +268,8 @@
         '<ul class="fiche-ingr">' + ingr.map(function (ri) {
           return '<li><span class="q">' + h(ri.libelle_quantite || ri.quantite) + '</span> ' + h(ri.ingredients ? ri.ingredients.nom : '?') +
             (ri.optionnel ? ' <span class="discret">(facultatif)</span>' : '') +
-            (!ri.optionnel && ri.ingredients && Object.prototype.hasOwnProperty.call(etat.placard, ri.ingredients.nom) ? ' <span class="placard">au placard</span>' : '') + '</li>';
+            (!ri.optionnel && ri.ingredients && Object.prototype.hasOwnProperty.call(etat.placard, ri.ingredients.nom) ? ' <span class="placard">au placard</span>' : '') +
+            mentionGoutIngr(ri) + '</li>';
         }).join('') + '</ul>' +
         '<h3>Préparation</h3>' +
         '<ol class="fiche-etapes">' + (r.etapes || []).map(function (e) {
@@ -712,8 +754,10 @@
           return;
         }
       }
-      try { etat.placard = await App.chargerPlacard(ctx.sb); }   // relu à chaque fois : le placard change souvent
-      catch (err) { /* pas bloquant : on garde le dernier placard connu */ }
+      // Placard et goûts relus à chaque fois (ils changent souvent) ; pas bloquant : on garde le dernier état connu
+      var lus = await Promise.allSettled([App.chargerPlacard(ctx.sb), App.chargerGouts(ctx.sb)]);
+      if (lus[0].status === 'fulfilled') etat.placard = lus[0].value;
+      if (lus[1].status === 'fulfilled') etat.gouts = lus[1].value;
       if (c.isConnected) rendreListe(c);
     }
   };

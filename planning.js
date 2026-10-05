@@ -266,14 +266,20 @@
       };
       // Anti-gaspi d'abord : plus il y a d'ingrédients déjà au placard, plus le plat remonte (les récents restent en fin)
       var placard = function (r) { return App.auPlacard ? App.auPlacard(r, etat.placard).length : 0; };
-      res = res.map(function (r, k) { return { r: r, k: k, n: rang(r), p: recent(r) ? 0 : placard(r), rec: recent(r) ? 1 : 0 }; })
-        .sort(function (a, b) { return a.rec - b.rec || b.p - a.p || a.n - b.n || a.k - b.k; }).map(function (x) { return x.r; });
+      // Goûts (14b) : un plat que quelqu'un n'aime pas passe en fin (avant les récents) ; un plat aimé gagne une place à saison égale
+      var gouts = function (r) { return App.goutsRecette ? App.goutsRecette(r, etat.gouts) : { pas: [], aimes: [] }; };
+      res = res.map(function (r, k) {
+        var g = gouts(r);
+        return { r: r, k: k, n: rang(r), p: recent(r) ? 0 : placard(r), rec: recent(r) ? 1 : 0, pas: g.pas.length ? 1 : 0, aime: g.aimes.length ? 1 : 0 };
+      })
+        .sort(function (a, b) { return a.rec - b.rec || a.pas - b.pas || b.p - a.p || a.n - b.n || b.aime - a.aime || a.k - b.k; }).map(function (x) { return x.r; });
       liste.innerHTML = res.length ? res.map(function (r) {
         var j = etat.recents[r.id];
         return '<li><button type="button" class="rec-item" data-id="' + h(r.id) + '"><span class="rec-titre">' + h(r.titre) + '</span>' +
           '<span class="rec-infos"><span>' + (r.temps_prep_min + r.temps_cuisson_min) + ' min</span><span>' + r._nutri.kcal + ' kcal</span>' +
           (App.mentionSaison ? App.mentionSaison(r, d.getMonth() + 1) : '') +
           (App.mentionPlacard ? App.mentionPlacard(r, etat.placard) : '') +
+          (App.mentionGouts ? App.mentionGouts(r, etat.gouts) : '') +
           (j !== undefined ? '<span class="recent">' + texteRecent(j) + '</span>' : '') + '</span></button></li>';
       }).join('') : '<li class="rec-aucune">Aucune recette ne correspond.</li>';
     }
@@ -303,7 +309,9 @@
     window.scrollTo(0, 0);
     etat.placard = {};
     var placard = App.chargerPlacard ? App.chargerPlacard(ctx.sb).then(function (p) { etat.placard = p; }, function () { /* pas bloquant */ }) : null;
-    Promise.all([chargerRecents(ctx.sb, ch.jour), placard]).then(function () { pret = true; if (c.isConnected) maj(); });
+    etat.gouts = {};
+    var gouts = App.chargerGouts ? App.chargerGouts(ctx.sb).then(function (g) { etat.gouts = g; }, function () { /* pas bloquant */ }) : null;
+    Promise.all([chargerRecents(ctx.sb, ch.jour), placard, gouts]).then(function () { pret = true; if (c.isConnected) maj(); });
   }
 
   // ---------- Chargement ----------
